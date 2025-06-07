@@ -1,4 +1,5 @@
 import inspect
+from inspect import Parameter
 from typing import Callable, TypeVar, Generic
 
 from pybind.emitters import Emitter, TriEmitter, BiEmitter, ValueEmitter
@@ -16,32 +17,42 @@ def trim_and_call(listener: Callable, *parameters):
     listener(*trimmed_parameters)
 
 
+def _is_required_parameter(param: Parameter) -> bool:
+    return param.default == param.empty and param.kind in (Parameter.POSITIONAL_ONLY, Parameter.POSITIONAL_OR_KEYWORD)
+
+
 def count_non_default_parameters(function: Callable) -> int:
     parameters = inspect.signature(function).parameters
-    return sum(1 for param in parameters.values() if param.default == param.empty)
+    return sum(1 for param in parameters.values() if _is_required_parameter(param))
 
 
 def assert_parameter_max_count(callable_: Callable, max_count: int) -> None:
     if count_non_default_parameters(callable_) > max_count:
-        raise ValueError(f"Callable {callable_.__name__} has too many non-default parameters: "
+        if hasattr(callable_, '__name__'):
+            callable_name = callable_.__name__
+        elif hasattr(callable_, '__class__'):
+            callable_name = callable_.__class__.__name__
+        else:
+            callable_name = str(callable_)
+        raise ValueError(f"Callable {callable_name} has too many non-default parameters: "
                          f"{count_non_default_parameters(callable_)} > {max_count}")
 
 
 class Event(Observable, Emitter):
+    _observers: list[Observer]
+
     def __init__(self):
-        self.listeners = []
+        self._observers = []
 
-    def observe(self, observer: Observer):
-        self.listeners.append(observer)
+    def observe(self, observer: Observer) -> None:
+        self._observers.append(observer)
         assert_parameter_max_count(observer, 0)
-        return self
 
-    def unobserve(self, observer: Observer):
-        self.listeners.remove(observer)
-        return self
+    def unobserve(self, observer: Observer) -> None:
+        self._observers.remove(observer)
 
     def __call__(self) -> None:
-        for listener in self.listeners:
+        for listener in self._observers:
             listener()
 
 
@@ -52,11 +63,11 @@ class ValueEvent(Generic[_S], ValueObservable[_S], ValueEmitter[_S]):
         self._observers = []
         super().__init__()
 
-    def observe(self, observer: Observer | ValueObserver[_T]) -> None:
+    def observe(self, observer: Observer | ValueObserver[_S]) -> None:
         self._observers.append(observer)
         assert_parameter_max_count(observer, 1)
 
-    def unobserve(self, observer: Observer | ValueObserver[_T]) -> None:
+    def unobserve(self, observer: Observer | ValueObserver[_S]) -> None:
         self._observers.remove(observer)
 
     def __call__(self, value: _S) -> None:
@@ -70,11 +81,11 @@ class BiEvent(Generic[_S, _T], BiObservable[_S, _T], BiEmitter[_S, _T]):
     def __init__(self):
         self._observers = []
 
-    def observe(self, observer: Observer | ValueObserver[_T] | BiObserver[_T, _U]) -> None:
+    def observe(self, observer: Observer | ValueObserver[_S] | BiObserver[_S, _T]) -> None:
         self._observers.append(observer)
         assert_parameter_max_count(observer, 2)
 
-    def unobserve(self, observer: Observer | ValueObserver[_T] | BiObserver[_T, _U]) -> None:
+    def unobserve(self, observer: Observer | ValueObserver[_S] | BiObserver[_S, _T]) -> None:
         self._observers.remove(observer)
 
     def __call__(self, value_0: _S, value_1: _T) -> None:
@@ -83,16 +94,16 @@ class BiEvent(Generic[_S, _T], BiObservable[_S, _T], BiEmitter[_S, _T]):
 
 
 class TriEvent(Generic[_S, _T, _U], TriObservable[_S, _T, _U], TriEmitter[_S, _T, _U]):
-    _observers: list[ValueObserver[_S] | BiObserver[_S, _T] | TriObserver[_S, _T, _U]]
+    _observers: list[Observer | ValueObserver[_S] | BiObserver[_S, _T] | TriObserver[_S, _T, _U]]
 
     def __init__(self):
         self._observers = []
 
-    def observe(self, observer: Observer | ValueObserver[_T] | BiObserver[_T, _U] | TriObserver[_T, _U, _S]) -> None:
+    def observe(self, observer: Observer | ValueObserver[_S] | BiObserver[_S, _T] | TriObserver[_S, _T, _U]) -> None:
         self._observers.append(observer)
         assert_parameter_max_count(observer, 3)
 
-    def unobserve(self, observer: Observer | ValueObserver[_T] | BiObserver[_T, _U] | TriObserver[_T, _U, _S]) -> None:
+    def unobserve(self, observer: Observer | ValueObserver[_S] | BiObserver[_S, _T] | TriObserver[_S, _T, _U]) -> None:
         self._observers.remove(observer)
 
     def __call__(self, value_0: _S, value_1: _T, value_2: _U) -> None:
