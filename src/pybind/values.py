@@ -1,15 +1,20 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from pathlib import Path
-from typing import TypeVar, Generic, Optional, Any, Iterable
+from typing import TypeVar, Generic, Optional, Any, Iterable, TYPE_CHECKING, Sequence, Callable
 
 from pybind.event import ValueEvent
 from pybind.observables import ValueObservable, Observer, ValueObserver
 
+if TYPE_CHECKING:
+    from pybind.str_values import StrValue
+
+
 EMPTY_FROZEN_SET: frozenset = frozenset()
 
 _S = TypeVar("_S")
+_T = TypeVar("_T")
+_U = TypeVar("_U")
 
 
 class Value(ValueObservable[_S], Generic[_S], ABC):
@@ -48,6 +53,10 @@ class Value(ValueObservable[_S], Generic[_S], ABC):
             if value is dependency:
                 return True
         return False
+
+    def to_str(self) -> StrValue:
+        from pybind.str_values import ToStrValue
+        return ToStrValue(self)
 
 
 class Variable(Value[_S], Generic[_S], ABC):
@@ -154,3 +163,136 @@ class Constant(Value[_S], Generic[_S]):
 
     def derived_from(self) -> frozenset[Value[_S]]:
         return EMPTY_FROZEN_SET
+
+
+class DerivedValue(Value[_T], Generic[_S, _T], ABC):
+    def __init__(self, of: Value[_S]):
+        self._of = of
+        self._value = self.transform(of.value)
+        self._on_change: ValueEvent[_T] = ValueEvent()
+        self._of.observe(self._on_source_change)
+
+    @abstractmethod
+    def transform(self, s: _S) -> _T:
+        raise NotImplementedError
+
+    def _on_source_change(self, new_source_value: _S) -> None:
+        new_transformed_value = self.transform(new_source_value)
+        if new_transformed_value != self._value:
+            self._value = new_transformed_value
+            self._on_change(self._value)
+
+    @property
+    def value(self) -> _T:
+        return self._value
+
+    def observe(self, observer: Observer | ValueObserver[_T]) -> None:
+        self._on_change.observe(observer)
+
+    def unobserve(self, observer: Observer | ValueObserver[_T]) -> None:
+        self._on_change.unobserve(observer)
+
+    def derived_from(self) -> frozenset[Value[_S]]:
+        return frozenset([self._of])
+
+
+def _create_value_getter(value: Value[_S] | _S) -> Callable[[], _S]:
+    if isinstance(value, Value):
+        return lambda: value.value
+    else:
+        return lambda: value
+
+
+class CombinedTwoValues(Value[_U], Generic[_S, _T, _U], ABC):
+    _on_change: ValueEvent[_U]
+
+    def __init__(self, left: Value[_S] | _S, right: Value[_T] | _T):
+        listed_values = []
+        self._left_getter = _create_value_getter(left)
+        self._right_getter = _create_value_getter(right)
+        if isinstance(left, Value):
+            listed_values.append(left)
+            left.observe(self._on_left_change)
+        if isinstance(right, Value):
+            listed_values.append(right)
+            right.observe(self._on_right_change)
+        self._value = self.transform(self._left_getter(), self._right_getter())
+        self._on_change = ValueEvent()
+        self._value_sources = frozenset(listed_values)
+
+    def _on_left_change(self, new_left_value: _S) -> None:
+        new_value = self.transform(new_left_value, self._right_getter())
+        self._on_result_change(new_value)
+
+    def _on_right_change(self, new_right_value: _T) -> None:
+        new_value = self.transform(self._left_getter(), new_right_value)
+        self._on_result_change(new_value)
+
+    def _on_result_change(self, new_value: _U) -> None:
+        if new_value != self._value:
+            self._value = new_value
+            self._on_change(self._value)
+
+    @abstractmethod
+    def transform(self, left: _S, right: _T) -> _U:
+        raise NotImplementedError
+
+    @property
+    def value(self) -> _U:
+        return self._value
+
+    def observe(self, observer: Observer | ValueObserver[_U]) -> None:
+        self._on_change.observe(observer)
+
+    def unobserve(self, observer: Observer | ValueObserver[_U]) -> None:
+        self._on_change.unobserve(observer)
+
+    def derived_from(self) -> frozenset[Value[_S]]:
+        return self._value_sources
+
+
+class CombinedValue(Value[_T], Generic[_S, _T], ABC):
+    def __init__(self, sources: Sequence[Value[_S] | _S]):
+        self._sources = sources
+        value_sources: list[Value[_S]] = []
+
+        for source in sources:
+            if isinstance(source, Value):
+                value_sources.append(source)
+                source.observe(self._on_source_change)
+        self._value_sources = frozenset(value_sources)
+        self._value = self._transformed_value()
+        self._on_change: ValueEvent[_T] = ValueEvent()
+
+    def _current_values(self) -> Iterable[_S]:
+        for source in self._sources:
+            if isinstance(source, Value):
+                yield source.value
+            else:
+                yield source
+
+    @abstractmethod
+    def transform(self, *args: _S) -> _T:
+        raise NotImplementedError
+
+    def _transformed_value(self) -> _T:
+        return self.transform(*list(self._current_values()))
+
+    def _on_source_change(self, _: _S) -> None:
+        new_transformed_value = self._transformed_value()
+        if new_transformed_value != self._value:
+            self._value = new_transformed_value
+            self._on_change(self._value)
+
+    @property
+    def value(self) -> _T:
+        return self._value
+
+    def observe(self, observer: Observer | ValueObserver[_T]) -> None:
+        self._on_change.observe(observer)
+
+    def unobserve(self, observer: Observer | ValueObserver[_T]) -> None:
+        self._on_change.unobserve(observer)
+
+    def derived_from(self) -> frozenset[Value[_S]]:
+        return self._value_sources
