@@ -52,11 +52,11 @@ class ValueEvent(Generic[_S], ValueObservable[_S], ValueEmitter[_S]):
         self._observers = []
         super().__init__()
 
-    def observe(self, observer: Observer | ValueObserver[_T]) -> None:
+    def observe(self, observer: Observer | ValueObserver[_S]) -> None:
         self._observers.append(observer)
         assert_parameter_max_count(observer, 1)
 
-    def unobserve(self, observer: Observer | ValueObserver[_T]) -> None:
+    def unobserve(self, observer: Observer | ValueObserver[_S]) -> None:
         self._observers.remove(observer)
 
     def __call__(self, value: _S) -> None:
@@ -70,11 +70,11 @@ class BiEvent(Generic[_S, _T], BiObservable[_S, _T], BiEmitter[_S, _T]):
     def __init__(self):
         self._observers = []
 
-    def observe(self, observer: Observer | ValueObserver[_T] | BiObserver[_T, _U]) -> None:
+    def observe(self, observer: Observer | ValueObserver[_S] | BiObserver[_S, _T]) -> None:
         self._observers.append(observer)
         assert_parameter_max_count(observer, 2)
 
-    def unobserve(self, observer: Observer | ValueObserver[_T] | BiObserver[_T, _U]) -> None:
+    def unobserve(self, observer: Observer | ValueObserver[_S] | BiObserver[_S, _T]) -> None:
         self._observers.remove(observer)
 
     def __call__(self, value_0: _S, value_1: _T) -> None:
@@ -83,16 +83,16 @@ class BiEvent(Generic[_S, _T], BiObservable[_S, _T], BiEmitter[_S, _T]):
 
 
 class TriEvent(Generic[_S, _T, _U], TriObservable[_S, _T, _U], TriEmitter[_S, _T, _U]):
-    _observers: list[ValueObserver[_S] | BiObserver[_S, _T] | TriObserver[_S, _T, _U]]
+    _observers: list[Observer | ValueObserver[_S] | BiObserver[_S, _T] | TriObserver[_S, _T, _U]]
 
     def __init__(self):
         self._observers = []
 
-    def observe(self, observer: Observer | ValueObserver[_T] | BiObserver[_T, _U] | TriObserver[_T, _U, _S]) -> None:
+    def observe(self, observer: Observer | ValueObserver[_S] | BiObserver[_S, _T] | TriObserver[_S, _T, _U]) -> None:
         self._observers.append(observer)
         assert_parameter_max_count(observer, 3)
 
-    def unobserve(self, observer: Observer | ValueObserver[_T] | BiObserver[_T, _U] | TriObserver[_T, _U, _S]) -> None:
+    def unobserve(self, observer: Observer | ValueObserver[_S] | BiObserver[_S, _T] | TriObserver[_S, _T, _U]) -> None:
         self._observers.remove(observer)
 
     def __call__(self, value_0: _S, value_1: _T, value_2: _U) -> None:
