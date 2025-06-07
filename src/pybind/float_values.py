@@ -1,14 +1,22 @@
 from __future__ import annotations
 
+import operator
 from abc import ABC, abstractmethod
-from typing import Generic, Callable, Sequence
+from typing import Generic, Callable, Sequence, TypeVar
 
+from pybind.bool_values import BoolValue
 from pybind.event import ValueEvent
 from pybind.observables import Observer, ValueObserver
 
-from pybind.values import Value, CombinedValue, SimpleVariable, CombinedTwoValues, _U, _create_value_getter
+from pybind.values import Value, CombinedMixedValues, SimpleVariable, CombinedTwoValues, _create_value_getter, \
+    DerivedValue, DerivedValueBase
+
 
 FloatLike = int | Value[int] | float | Value[float]
+
+_S = TypeVar("_S")
+_T = TypeVar("_T")
+_U = TypeVar("_U")
 
 
 class FloatValue(Value[float], ABC):
@@ -36,6 +44,21 @@ class FloatValue(Value[float], ABC):
     def __rtruediv__(self, other: int | float) -> FloatValue:
         return DivideValues(other, self)
 
+    def __lt__(self, other: FloatLike) -> BoolValue:
+        return CompareNumbersValues(self, other, operator.lt)
+
+    def __le__(self, other: FloatLike) -> BoolValue:
+        return CompareNumbersValues(self, other, operator.le)
+
+    def __gt__(self, other: FloatLike) -> BoolValue:
+        return CompareNumbersValues(self, other, operator.gt)
+
+    def __ge__(self, other: FloatLike) -> BoolValue:
+        return CompareNumbersValues(self, other, operator.ge)
+
+    def __neg__(self) -> FloatValue:
+        return NegateFloatValue(self)
+
 
 def _create_float_getter(value: float | Value[int] | Value[float]) -> Callable[[], float]:
     if isinstance(value, Value):
@@ -51,17 +74,15 @@ def _get_float(value: float | Value[int] | Value[float]) -> float:
         return value
 
 
-class CombinedManyFloatValues(Value[_U], Generic[_U], ABC):
+class CombinedFloatValues(DerivedValueBase[_U], Generic[_U], ABC):
     def __init__(self, *values: float | Value[int] | Value[float]):
+        super().__init__(*[v for v in values if isinstance(v, Value)])
         self.gotten_values = [_get_float(v) for v in values]
-        listed_values = []
         for i, v in enumerate(values):
             if isinstance(v, Value):
-                listed_values.append(v)
                 v.observe(self._create_on_n_changed(i))
         self._value = self._calculate_value()
         self._on_change: ValueEvent[_U] = ValueEvent()
-        self._value_sources = frozenset(listed_values)
 
     def _create_on_n_changed(self, index: int) -> Callable[[float], None]:
         def on_change(new_value: float) -> None:
@@ -91,11 +112,8 @@ class CombinedManyFloatValues(Value[_U], Generic[_U], ABC):
     def unobserve(self, observer: Observer | ValueObserver[_U]) -> None:
         self._on_change.unobserve(observer)
 
-    def derived_from(self) -> frozenset[Value]:
-        return self._value_sources
 
-
-class CombinedTwoFloatValues(CombinedManyFloatValues[_U], Generic[_U], ABC):
+class CombinedTwoFloatValues(CombinedFloatValues[_U], Generic[_U], ABC):
     def __init__(self,
                  left: float | Value[int] | Value[float],
                  right: float | Value[int] | Value[float]):
@@ -109,7 +127,7 @@ class CombinedTwoFloatValues(CombinedManyFloatValues[_U], Generic[_U], ABC):
         raise NotImplementedError
 
 
-class AddFloatValues(CombinedManyFloatValues[float], FloatValue):
+class AddFloatValues(CombinedFloatValues[float], FloatValue):
     def __init__(self, *values: FloatLike):
         super().__init__(*values)
 
@@ -125,7 +143,7 @@ class SubtractFloatValues(CombinedTwoFloatValues[float], FloatValue):
         return left - right
 
 
-class MultiplyFloatValues(CombinedManyFloatValues[float], FloatValue):
+class MultiplyFloatValues(CombinedFloatValues[float], FloatValue):
     def __init__(self, *values: FloatLike):
         super().__init__(*values)
 
@@ -146,3 +164,17 @@ class DivideValues(CombinedTwoFloatValues[float], FloatValue):
 
 class FloatVariable(SimpleVariable[float], FloatValue):
     pass
+
+
+class NegateFloatValue(DerivedValue[float, float], FloatValue):
+    def transform(self, value: float) -> float:
+        return -value
+
+
+class CompareNumbersValues(CombinedTwoFloatValues[bool], BoolValue):
+    def __init__(self, left: FloatLike, right: FloatLike, op: Callable[[float, float], bool]):
+        self._op = op
+        super().__init__(left, right)
+
+    def transform_two(self, left: float, right: float) -> bool:
+        return self._op(left, right)

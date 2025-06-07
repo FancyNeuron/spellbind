@@ -1,0 +1,18 @@
+from __future__ import annotations
+
+from abc import ABC
+
+from pybind.values import Value, DerivedValue, _S, _T
+
+
+class BoolValue(Value[bool], ABC):
+    def logical_not(self) -> BoolValue:
+        return NotBoolValue(self)
+
+
+class NotBoolValue(DerivedValue[bool, bool], BoolValue):
+    def __init__(self, value: Value[bool]):
+        super().__init__(value)
+
+    def transform(self, value: bool) -> bool:
+        return not value

@@ -256,3 +256,22 @@ def test_floordiv_int_divided_by_int_value():
 
     v1.value = 4
     assert v2.value == 2
+
+
+# Unary Minus Tests - Int
+def test_negate_int_value():
+    v0 = IntVariable(5)
+    v1 = -v0
+    assert v1.value == -5
+
+    v0.value = -3
+    assert v1.value == 3
+
+
+def test_negate_int_value_zero():
+    v0 = IntVariable(0)
+    v1 = -v0
+    assert v1.value == 0
+
+    v0.value = 7
+    assert v1.value == -7

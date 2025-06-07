@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import operator
 from abc import ABC
 from typing import overload
 
 from pybind.float_values import FloatValue, MultiplyFloatValues, DivideValues, SubtractFloatValues, \
-    AddFloatValues
-from pybind.values import Value, CombinedValue, SimpleVariable, CombinedTwoValues
+    AddFloatValues, CompareNumbersValues
+from pybind.values import Value, CombinedMixedValues, SimpleVariable, CombinedTwoValues, DerivedValue
+from pybind.bool_values import BoolValue
 
 IntLike = int | Value[int]
 FloatLike = IntLike | float | FloatValue
@@ -90,15 +92,27 @@ class IntValue(Value[int], ABC):
     def __rfloordiv__(self, other: int) -> IntValue:
         return FloorDivideIntValues(other, self)
 
+    def __lt__(self, other: FloatLike) -> BoolValue:
+        return CompareNumbersValues(self, other, operator.lt)
+
+    def __le__(self, other: FloatLike) -> BoolValue:
+        return CompareNumbersValues(self, other, operator.le)
+
+    def __gt__(self, other: FloatLike) -> BoolValue:
+        return CompareNumbersValues(self, other, operator.gt)
+
+    def __ge__(self, other: FloatLike) -> BoolValue:
+        return CompareNumbersValues(self, other, operator.ge)
+
+    def __neg__(self) -> IntValue:
+        return NegateIntValue(self)
+
 
 class IntVariable(SimpleVariable[int], IntValue):
     pass
 
 
-class AddIntValues(CombinedValue[int, int], IntValue):
-    def __init__(self, *values: IntLike):
-        super().__init__(list(values))
-
+class AddIntValues(CombinedMixedValues[int, int], IntValue):
     def transform(self, *values: int) -> int:
         return sum(values)
 
@@ -111,10 +125,7 @@ class SubtractIntValues(CombinedTwoValues[int, int, int], IntValue):
         return left - right
 
 
-class MultiplyIntValues(CombinedValue[int, int], IntValue):
-    def __init__(self, *values: IntLike):
-        super().__init__(list(values))
-
+class MultiplyIntValues(CombinedMixedValues[int, int], IntValue):
     def transform(self, *values: int) -> int:
         result = 1
         for value in values:
@@ -136,3 +147,8 @@ class FloorDivideIntValues(CombinedTwoValues[int, int, int], IntValue):
 
     def transform(self, left: int, right: int) -> int:
         return left // right
+
+
+class NegateIntValue(DerivedValue[int, int], IntValue):
+    def transform(self, value: int) -> int:
+        return -value

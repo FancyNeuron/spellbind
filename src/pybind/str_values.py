@@ -3,7 +3,7 @@ from __future__ import annotations
 from abc import ABC
 from typing import Any
 
-from pybind.values import Value, DerivedValue, CombinedValue, SimpleVariable
+from pybind.values import Value, DerivedValue, CombinedMixedValues, SimpleVariable
 
 StringLike = str | Value[str]
 
@@ -18,16 +18,13 @@ class StrVariable(SimpleVariable[str], StrValue):
 
 
 class ToStrValue(DerivedValue[Any, str], StrValue):
-    def transform(self, s: Any) -> str:
-        return str(s)
+    def transform(self, value: Any) -> str:
+        return str(value)
 
     def to_str(self) -> StrValue:
         return self
 
 
-class ConcatenateStrValues(CombinedValue[str, str], StrValue):
-    def __init__(self, *values: StringLike):
-        super().__init__(values)
-
+class ConcatenateStrValues(CombinedMixedValues[str, str], StrValue):
     def transform(self, *values: str) -> str:
         return ''.join(value for value in values)
