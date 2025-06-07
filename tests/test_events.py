@@ -1,27 +1,7 @@
 import pytest
-from unittest.mock import Mock
 
+from conftest import NoParametersObserver, OneParameterObserver, OneDefaultParameterObserver
 from pybind.event import Event
-
-
-class Observer(Mock):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-
-class NoParametersObserver(Observer):
-    def __call__(self):
-        super().__call__()
-
-
-class OneParameterObserver(Observer):
-    def __call__(self, param0):
-        super().__call__(param0)
-
-
-class OneDefaultParameterObserver(Observer):
-    def __call__(self, param0="default"):
-        super().__call__(param0=param0)
 
 
 def test_event_initialization():
@@ -94,7 +74,7 @@ def test_mock_observer_with_default_parameter():
     event.observe(observer)
     event()
 
-    observer.assert_called_once_with(param0="default")
+    observer.assert_called_once_with("default")
 
 
 def test_call_with_no_observers():
