@@ -11,19 +11,28 @@ _T = TypeVar("_T")
 _U = TypeVar("_U")
 
 
-def trim_and_call(listener: Callable, *parameters):
-    parameter_count = count_non_default_parameters(listener)
+def _is_positional_parameter(param: Parameter) -> bool:
+    return param.kind in (Parameter.POSITIONAL_ONLY, Parameter.POSITIONAL_OR_KEYWORD)
+
+
+def count_total_parameters(function: Callable) -> int:
+    parameters = inspect.signature(function).parameters
+    return sum(1 for parameter in parameters.values() if _is_positional_parameter(parameter))
+
+
+def trim_and_call(observer: Callable, *parameters):
+    parameter_count = count_total_parameters(observer)
     trimmed_parameters = parameters[:parameter_count]
-    listener(*trimmed_parameters)
+    observer(*trimmed_parameters)
 
 
-def _is_required_parameter(param: Parameter) -> bool:
-    return param.default == param.empty and param.kind in (Parameter.POSITIONAL_ONLY, Parameter.POSITIONAL_OR_KEYWORD)
+def _is_required_positional_parameter(param: Parameter) -> bool:
+    return param.default == param.empty and _is_positional_parameter(param)
 
 
 def count_non_default_parameters(function: Callable) -> int:
     parameters = inspect.signature(function).parameters
-    return sum(1 for param in parameters.values() if _is_required_parameter(param))
+    return sum(1 for param in parameters.values() if _is_required_positional_parameter(param))
 
 
 def assert_parameter_max_count(callable_: Callable, max_count: int) -> None:
@@ -52,8 +61,8 @@ class Event(Observable, Emitter):
         self._observers.remove(observer)
 
     def __call__(self) -> None:
-        for listener in self._observers:
-            listener()
+        for observer in self._observers:
+            observer()
 
 
 class ValueEvent(Generic[_S], ValueObservable[_S], ValueEmitter[_S]):
@@ -71,8 +80,8 @@ class ValueEvent(Generic[_S], ValueObservable[_S], ValueEmitter[_S]):
         self._observers.remove(observer)
 
     def __call__(self, value: _S) -> None:
-        for listener in self._observers:
-            trim_and_call(listener, value)
+        for observer in self._observers:
+            trim_and_call(observer, value)
 
 
 class BiEvent(Generic[_S, _T], BiObservable[_S, _T], BiEmitter[_S, _T]):
@@ -89,8 +98,8 @@ class BiEvent(Generic[_S, _T], BiObservable[_S, _T], BiEmitter[_S, _T]):
         self._observers.remove(observer)
 
     def __call__(self, value_0: _S, value_1: _T) -> None:
-        for listener in self._observers:
-            trim_and_call(listener, value_0, value_1)
+        for observer in self._observers:
+            trim_and_call(observer, value_0, value_1)
 
 
 class TriEvent(Generic[_S, _T, _U], TriObservable[_S, _T, _U], TriEmitter[_S, _T, _U]):
@@ -107,5 +116,5 @@ class TriEvent(Generic[_S, _T, _U], TriObservable[_S, _T, _U], TriEmitter[_S, _T
         self._observers.remove(observer)
 
     def __call__(self, value_0: _S, value_1: _T, value_2: _U) -> None:
-        for listener in self._observers:
-            trim_and_call(listener, value_0, value_1, value_2)
+        for observer in self._observers:
+            trim_and_call(observer, value_0, value_1, value_2)
