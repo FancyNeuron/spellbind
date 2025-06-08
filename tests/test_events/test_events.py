@@ -4,12 +4,12 @@ from conftest import NoParametersObserver, OneParameterObserver, OneDefaultParam
 from pybind.event import Event
 
 
-def test_event_initialization():
+def test_event_initialization_empty_subscriptions():
     event = Event()
     assert event._subscriptions == []
 
 
-def test_mock_observe_adds_observer():
+def test_event_observe_mock_observer_adds_subscription():
     event = Event()
     observer = NoParametersObserver()
 
@@ -18,14 +18,14 @@ def test_mock_observe_adds_observer():
     assert event.is_observed(observer)
 
 
-def test_mock_observe_validates_parameter_count():
+def test_event_observe_mock_observer_too_many_parameters_fails():
     event = Event()
 
     with pytest.raises(ValueError):
         event.observe(OneParameterObserver())
 
 
-def test_mock_unobserve_removes_observer():
+def test_event_unobserve_mock_observer_removes_subscription():
     event = Event()
     observer = NoParametersObserver()
     event.observe(observer)
@@ -35,14 +35,14 @@ def test_mock_unobserve_removes_observer():
     assert not event.is_observed(observer)
 
 
-def test_mock_unobserve_nonexistent_observer_raises():
+def test_event_unobserve_nonexistent_mock_observer_fails():
     event = Event()
 
     with pytest.raises(ValueError):
         event.unobserve(NoParametersObserver())
 
 
-def test_mock_unobserved_observer_not_called():
+def test_event_call_unobserved_mock_observer_not_invoked():
     event = Event()
     observer = NoParametersObserver()
     event.observe(observer)
@@ -53,7 +53,7 @@ def test_mock_unobserved_observer_not_called():
     observer.assert_not_called()
 
 
-def test_mock_call_invokes_all_observers():
+def test_event_call_invokes_all_mock_observers():
     event = Event()
     observer0 = NoParametersObserver()
     observer1 = NoParametersObserver()
@@ -66,7 +66,7 @@ def test_mock_call_invokes_all_observers():
     observer1.assert_called_once_with()
 
 
-def test_mock_observer_with_default_parameter():
+def test_event_observe_mock_observer_with_default_parameter():
     event = Event()
     observer = OneDefaultParameterObserver()
 
@@ -76,12 +76,12 @@ def test_mock_observer_with_default_parameter():
     observer.assert_called_once_with("default")
 
 
-def test_call_with_no_observers():
+def test_event_call_with_no_observers():
     event = Event()
     event()
 
 
-def test_function_observer_with_default_parameter():
+def test_event_observe_function_observer_with_default_parameter():
     event = Event()
 
     calls = []
@@ -94,7 +94,7 @@ def test_function_observer_with_default_parameter():
     assert calls == ["default"]
 
 
-def test_lambda_observer():
+def test_event_observe_lambda_observer():
     event = Event()
     calls = []
 

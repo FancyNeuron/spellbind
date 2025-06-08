@@ -4,7 +4,7 @@ from conftest import NoParametersObserver, OneParameterObserver, OneDefaultParam
     OneRequiredOneDefaultParameterObserver, TwoParametersObserver, TwoDefaultParametersObserver
 
 
-def test_bi_event_observe_and_call_no_parameters_mock_observer():
+def test_bi_event_observe_no_parameters_mock_observer():
     event = BiEvent[str, int]()
     observer = NoParametersObserver()
 
@@ -14,7 +14,7 @@ def test_bi_event_observe_and_call_no_parameters_mock_observer():
     observer.assert_called_once_with()
 
 
-def test_bi_event_observe_and_call_one_parameter_mock_observer():
+def test_bi_event_observe_one_parameter_mock_observer():
     event = BiEvent[str, int]()
     observer = OneParameterObserver()
 
@@ -24,7 +24,7 @@ def test_bi_event_observe_and_call_one_parameter_mock_observer():
     observer.assert_called_once_with("test_value")
 
 
-def test_bi_event_observe_and_call_one_default_parameter_mock_observer():
+def test_bi_event_observe_one_default_parameter_mock_observer():
     event = BiEvent[str, int]()
     observer = OneDefaultParameterObserver()
 
@@ -34,7 +34,7 @@ def test_bi_event_observe_and_call_one_default_parameter_mock_observer():
     observer.assert_called_once_with("test_value")
 
 
-def test_bi_event_observe_and_call_one_required_one_default_parameter_mock_observer():
+def test_bi_event_observe_one_required_one_default_parameter_mock_observer():
     event = BiEvent[str, int]()
     observer = OneRequiredOneDefaultParameterObserver()
 
@@ -44,7 +44,7 @@ def test_bi_event_observe_and_call_one_required_one_default_parameter_mock_obser
     observer.assert_called_once_with("test_value", 42)
 
 
-def test_bi_event_observe_and_call_two_parameters_mock_observer():
+def test_bi_event_observe_two_parameters_mock_observer():
     event = BiEvent[str, int]()
     observer = TwoParametersObserver()
 
@@ -54,7 +54,7 @@ def test_bi_event_observe_and_call_two_parameters_mock_observer():
     observer.assert_called_once_with("test_value", 42)
 
 
-def test_bi_event_observe_and_call_two_default_parameters_mock_observer():
+def test_bi_event_observe_two_default_parameters_mock_observer():
     event = BiEvent[str, int]()
     observer = TwoDefaultParametersObserver()
 
@@ -75,7 +75,7 @@ def test_bi_event_unobserve_mock_observer():
     observer.assert_not_called()
 
 
-def test_bi_event_multiple_mock_observers():
+def test_bi_event_call_multiple_mock_observers():
     event = BiEvent[str, int]()
     observer0 = NoParametersObserver()
     observer1 = OneParameterObserver()
@@ -91,7 +91,7 @@ def test_bi_event_multiple_mock_observers():
     observer2.assert_called_once_with("hello", 123)
 
 
-def test_bi_event_function_observer_with_too_many_parameters():
+def test_bi_event_observe_function_observer_too_many_parameters_fails():
     event = BiEvent[str, int]()
 
     def bad_observer(param0, param1, param2):
@@ -101,7 +101,7 @@ def test_bi_event_function_observer_with_too_many_parameters():
         event.observe(bad_observer)
 
 
-def test_bi_event_observe_and_call_lambda_no_parameters():
+def test_bi_event_observe_lambda_no_parameters():
     event = BiEvent[str, int]()
     called = []
 
@@ -111,7 +111,7 @@ def test_bi_event_observe_and_call_lambda_no_parameters():
     assert called == [True]
 
 
-def test_bi_event_observe_and_call_lambda_one_parameter():
+def test_bi_event_observe_lambda_one_parameter():
     event = BiEvent[str, int]()
     calls = []
 
@@ -121,7 +121,7 @@ def test_bi_event_observe_and_call_lambda_one_parameter():
     assert calls == ["test_value"]
 
 
-def test_bi_event_observe_and_call_lambda_two_parameters():
+def test_bi_event_observe_lambda_two_parameters():
     event = BiEvent[str, int]()
     calls = []
 
@@ -131,7 +131,7 @@ def test_bi_event_observe_and_call_lambda_two_parameters():
     assert calls == [("test_value", 42)]
 
 
-def test_bi_event_unobserve_lambda():
+def test_bi_event_unobserve_lambda_observer():
     event = BiEvent[str, int]()
     calls = []
     observer = lambda value0, value1: calls.append((value0, value1))
@@ -144,28 +144,28 @@ def test_bi_event_unobserve_lambda():
     assert calls == [("test0", 0)]
 
 
-def test_bi_event_lambda_with_too_many_parameters():
+def test_bi_event_observe_lambda_observer_too_many_parameters_fails():
     event = BiEvent[str, int]()
 
     with pytest.raises(ValueError):
         event.observe(lambda param0, param1, param2: None)
 
 
-def test_bi_event_call_with_one_parameter():
+def test_bi_event_call_with_one_parameter_fails():
     event = BiEvent[str, int]()
 
     with pytest.raises(TypeError):
         event("param0")
 
 
-def test_bi_event_call_with_three_parameters():
+def test_bi_event_call_with_three_parameters_fails():
     event = BiEvent[str, int]()
 
     with pytest.raises(TypeError):
         event("param0", 42, "param2")
 
 
-def test_bi_event_unobserve_non_existent_observer():
+def test_bi_event_unobserve_nonexistent_mock_observer_fails():
     event = BiEvent[str, int]()
     observer = TwoParametersObserver()
 
@@ -173,7 +173,7 @@ def test_bi_event_unobserve_non_existent_observer():
         event.unobserve(observer)
 
 
-def test_bi_event_observe_same_observer_multiple_times():
+def test_bi_event_observe_same_mock_observer_multiple_times():
     event = BiEvent[str, int]()
     observer = TwoParametersObserver()
 
@@ -190,7 +190,7 @@ def test_bi_event_call_with_no_observers():
     event("test_value", 42)  # Should not raise
 
 
-def test_bi_event_observers_called_in_order():
+def test_bi_event_call_lambda_observers_in_order():
     event = BiEvent[str, int]()
     call_order = []
 
@@ -203,7 +203,7 @@ def test_bi_event_observers_called_in_order():
     assert call_order == ["first", "second", "third"]
 
 
-def test_bi_event_call_with_none_values():
+def test_bi_event_call_mock_observer_with_none_values():
     event = BiEvent[str | None, int | None]()
     observer = TwoParametersObserver()
 

@@ -6,7 +6,7 @@ from conftest import NoParametersObserver, OneParameterObserver
 from pybind.event import Event
 
 
-def test_weak_observe_adds_observer():
+def test_event_weak_observe_mock_observer_adds_subscription():
     event = Event()
     observer = NoParametersObserver()
 
@@ -15,14 +15,14 @@ def test_weak_observe_adds_observer():
     assert event.is_observed(observer)
 
 
-def test_weak_observe_validates_parameter_count():
+def test_event_weak_observe_mock_observer_too_many_parameters_fails():
     event = Event()
 
     with pytest.raises(ValueError):
         event.weak_observe(OneParameterObserver())
 
 
-def test_weak_observe_calls_observer():
+def test_event_weak_observe_mock_observer_called():
     event = Event()
     observer = NoParametersObserver()
     event.weak_observe(observer)
@@ -32,7 +32,7 @@ def test_weak_observe_calls_observer():
     observer.assert_called_once_with()
 
 
-def test_weak_observe_unobserve_removes_observer():
+def test_event_weak_observe_unobserve_mock_observer_removes_subscription():
     event = Event()
     observer = NoParametersObserver()
     event.weak_observe(observer)
@@ -42,7 +42,7 @@ def test_weak_observe_unobserve_removes_observer():
     assert not event.is_observed(observer)
 
 
-def test_weak_observe_unobserve_twice_removes_observer():
+def test_event_weak_observe_unobserve_twice_mock_observer_removes_subscription():
     event = Event()
     observer = NoParametersObserver()
     event.weak_observe(observer)
@@ -54,7 +54,7 @@ def test_weak_observe_unobserve_twice_removes_observer():
     assert not event.is_observed(observer)
 
 
-def test_weak_observe_twice_unobserve_once_still_observer():
+def test_event_weak_observe_twice_unobserve_once_mock_observer_still_subscribed():
     event = Event()
     observer = NoParametersObserver()
     event.weak_observe(observer)
@@ -65,7 +65,7 @@ def test_weak_observe_twice_unobserve_once_still_observer():
     assert event.is_observed(observer)
 
 
-def test_weak_observe_auto_cleanup():
+def test_event_weak_observe_mock_observer_auto_cleanup():
     event = Event()
     observer = NoParametersObserver()
     event.weak_observe(observer)
@@ -78,7 +78,7 @@ def test_weak_observe_auto_cleanup():
     assert len(event._subscriptions) == 0
 
 
-def test_weak_observe_with_function():
+def test_event_weak_observe_function_observer():
     event = Event()
     calls = []
 
@@ -91,7 +91,7 @@ def test_weak_observe_with_function():
     assert calls == [True]
 
 
-def test_mixed_weak_and_strong_observers():
+def test_event_mixed_weak_strong_mock_observers():
     event = Event()
     strong_observer = NoParametersObserver()
     weak_observer = NoParametersObserver()
@@ -105,7 +105,7 @@ def test_mixed_weak_and_strong_observers():
     weak_observer.assert_called_once_with()
 
 
-def test_weak_observe_method_auto_cleanup():
+def test_event_weak_observe_mock_observer_method_auto_cleanup():
     event = Event()
 
     observer = NoParametersObserver()
@@ -119,7 +119,7 @@ def test_weak_observe_method_auto_cleanup():
     assert len(event._subscriptions) == 0
 
 
-def test_weak_observe_method_before_cleanup():
+def test_event_weak_observe_mock_observer_method_before_cleanup():
     event = Event()
 
     observer = NoParametersObserver()
@@ -131,7 +131,7 @@ def test_weak_observe_method_before_cleanup():
     assert len(event._subscriptions) == 1
 
 
-def test_weak_lambda_cleaned_immediately_observer():
+def test_event_weak_observe_lambda_observer_cleaned_immediately():
     event = Event()
     calls = []
 
@@ -141,7 +141,7 @@ def test_weak_lambda_cleaned_immediately_observer():
     assert calls == []
 
 
-def test_weak_lambda_cleanup():
+def test_event_weak_observe_lambda_observer_cleanup():
     event = Event()
     calls = []
 
@@ -157,7 +157,7 @@ def test_weak_lambda_cleanup():
     assert calls == []
 
 
-def test_weak_lambda_unobserve():
+def test_event_weak_observe_unobserve_lambda_observer():
     event = Event()
     calls = []
 
@@ -171,7 +171,7 @@ def test_weak_lambda_unobserve():
     assert not event.is_observed(observer)
 
 
-def test_call_order_mixed_weak_strong():
+def test_event_call_mixed_weak_strong_lambda_observers_in_order():
     event = Event()
     calls = []
 
