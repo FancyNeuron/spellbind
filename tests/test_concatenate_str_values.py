@@ -12,3 +12,25 @@ def test_concatenate_str_values():
     variable1.value = "bar"
 
     assert concatenated.value == "foobar"
+
+
+def test_concatenate_str_value_literal_str_value():
+    first_name = StrVariable("Ada")
+    last_name = StrVariable("Lovelace")
+    full_name = first_name + " " + last_name
+
+    assert full_name.value == "Ada Lovelace"
+
+
+def test_concatenate_str_value_literal():
+    first_name = StrVariable("Ada")
+    full_name = first_name + " Lovelace"
+
+    assert full_name.value == "Ada Lovelace"
+
+
+def test_concatenate_literal_str_value():
+    last_name = StrVariable("Lovelace")
+    full_name = "Ada " + last_name
+
+    assert full_name.value == "Ada Lovelace"

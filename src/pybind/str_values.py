@@ -9,8 +9,11 @@ StringLike = str | Value[str]
 
 
 class StrValue(Value[str], ABC):
-    def __add__(self, other: Value[str]) -> StrValue:
+    def __add__(self, other: StringLike) -> StrValue:
         return ConcatenateStrValues(self, other)
+
+    def __radd__(self, other: StringLike) -> StrValue:
+        return ConcatenateStrValues(other, self)
 
 
 class StrVariable(SimpleVariable[str], StrValue):
