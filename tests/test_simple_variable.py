@@ -1,3 +1,5 @@
+import gc
+
 import pytest
 from pybind.values import SimpleVariable, Constant
 from conftest import NoParametersObserver, OneParameterObserver
@@ -313,13 +315,52 @@ def test_simple_variable_deep_derived_from_diamond_pattern():
     assert variable_top in dependencies
 
 
-def test_constant_derived_from_empty():
-    constant = Constant("test")
+def test_bind_weak_reference_clears():
+    root_var = SimpleVariable("root0")
+    dependent_var = SimpleVariable("")
+    dependent_var.bind_to(root_var, bind_weakly=True)
 
-    assert constant.derived_from() == frozenset()
+    values = []
+    dependent_var.observe(lambda value: values.append(value))
+
+    root_var.value = "root1"
+    dependent_var = None
+    gc.collect()
+    root_var.value = "root2"
+
+    assert values == ["root1"]
 
 
-def test_constant_deep_derived_from_empty():
-    constant = Constant("test")
+def test_bind_strong_reference_stays():
+    root_var = SimpleVariable("root0")
+    dependent_var = SimpleVariable("")
+    dependent_var.bind_to(root_var, bind_weakly=False)
 
-    assert list(constant.deep_derived_from) == []
+    values = []
+    dependent_var.observe(lambda value: values.append(value))
+
+    root_var.value = "root1"
+    dependent_var = None
+    gc.collect()
+    root_var.value = "root2"
+
+    assert values == ["root1", "root2"]
+
+
+def test_daisy_chain_variables_weak_reference_stays():
+    root_var = SimpleVariable("root0")
+    middle_var = SimpleVariable("")
+    dependent_var = SimpleVariable("")
+
+    middle_var.bind_to(root_var, bind_weakly=True)
+    dependent_var.bind_to(middle_var, bind_weakly=False)
+
+    values = []
+    dependent_var.observe(lambda value: values.append(value))
+
+    root_var.value = "root1"
+    middle_var = None
+    gc.collect()
+    root_var.value = "root2"
+
+    assert values == ["root1", "root2"]
