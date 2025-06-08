@@ -6,17 +6,16 @@ from pybind.event import Event
 
 def test_event_initialization():
     event = Event()
-    assert event._observers == []
+    assert event._subscriptions == []
 
 
 def test_mock_observe_adds_observer():
     event = Event()
     observer = NoParametersObserver()
-    observer.__name__ = "test_observer"
 
     event.observe(observer)
 
-    assert observer in event._observers
+    assert event.is_observed(observer)
 
 
 def test_mock_observe_validates_parameter_count():
@@ -33,7 +32,7 @@ def test_mock_unobserve_removes_observer():
 
     event.unobserve(observer)
 
-    assert observer not in event._observers
+    assert not event.is_observed(observer)
 
 
 def test_mock_unobserve_nonexistent_observer_raises():

@@ -82,7 +82,6 @@ class CombinedFloatValues(DerivedValueBase[_U], Generic[_U], ABC):
             if isinstance(v, Value):
                 v.observe(self._create_on_n_changed(i))
         self._value = self._calculate_value()
-        self._on_change: ValueEvent[_U] = ValueEvent()
 
     def _create_on_n_changed(self, index: int) -> Callable[[float], None]:
         def on_change(new_value: float) -> None:
@@ -105,12 +104,6 @@ class CombinedFloatValues(DerivedValueBase[_U], Generic[_U], ABC):
     @property
     def value(self) -> _U:
         return self._value
-
-    def observe(self, observer: Observer | ValueObserver[_U]) -> None:
-        self._on_change.observe(observer)
-
-    def unobserve(self, observer: Observer | ValueObserver[_U]) -> None:
-        self._on_change.unobserve(observer)
 
 
 class CombinedTwoFloatValues(CombinedFloatValues[_U], Generic[_U], ABC):
