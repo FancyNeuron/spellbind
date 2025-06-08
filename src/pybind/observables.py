@@ -37,10 +37,10 @@ class DeadReferenceError(Exception):
 
 class Subscription(Generic[_O], ABC):
     def __init__(self, observer: _O):
-        self._positional_parameters = count_positional_parameters(observer)
+        self._positional_parameter_count = count_positional_parameters(observer)
 
     def _call(self, observer: _O, *args) -> None:
-        trimmed_args = args[:self._positional_parameters]
+        trimmed_args = args[:self._positional_parameter_count]
         observer(*trimmed_args)
 
     @abstractmethod
