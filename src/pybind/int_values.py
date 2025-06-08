@@ -6,7 +6,7 @@ from typing import overload
 
 from pybind.float_values import FloatValue, MultiplyFloatValues, DivideValues, SubtractFloatValues, \
     AddFloatValues, CompareNumbersValues
-from pybind.values import Value, CombinedMixedValues, SimpleVariable, CombinedTwoValues, DerivedValue
+from pybind.values import Value, CombinedMixedValues, SimpleVariable, CombinedTwoValues, DerivedValue, Constant
 from pybind.bool_values import BoolValue
 
 IntLike = int | Value[int]
@@ -106,6 +106,10 @@ class IntValue(Value[int], ABC):
 
     def __neg__(self) -> IntValue:
         return NegateIntValue(self)
+
+
+class IntConstant(IntValue, Constant[int]):
+    pass
 
 
 class IntVariable(SimpleVariable[int], IntValue):

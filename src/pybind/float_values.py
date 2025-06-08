@@ -9,8 +9,7 @@ from pybind.event import ValueEvent
 from pybind.observables import Observer, ValueObserver
 
 from pybind.values import Value, CombinedMixedValues, SimpleVariable, CombinedTwoValues, _create_value_getter, \
-    DerivedValue, DerivedValueBase
-
+    DerivedValue, DerivedValueBase, Constant
 
 FloatLike = int | Value[int] | float | Value[float]
 
@@ -58,6 +57,10 @@ class FloatValue(Value[float], ABC):
 
     def __neg__(self) -> FloatValue:
         return NegateFloatValue(self)
+
+
+class FloatConstant(FloatValue, Constant[float]):
+    pass
 
 
 def _create_float_getter(value: float | Value[int] | Value[float]) -> Callable[[], float]:

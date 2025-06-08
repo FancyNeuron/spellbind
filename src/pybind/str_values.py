@@ -3,7 +3,7 @@ from __future__ import annotations
 from abc import ABC
 from typing import Any
 
-from pybind.values import Value, DerivedValue, CombinedMixedValues, SimpleVariable
+from pybind.values import Value, DerivedValue, CombinedMixedValues, SimpleVariable, Constant
 
 StringLike = str | Value[str]
 
@@ -14,6 +14,10 @@ class StrValue(Value[str], ABC):
 
     def __radd__(self, other: StringLike) -> StrValue:
         return ConcatenateStrValues(other, self)
+
+
+class StrConstant(StrValue, Constant[str]):
+    pass
 
 
 class StrVariable(SimpleVariable[str], StrValue):
