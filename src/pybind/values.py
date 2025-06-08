@@ -111,6 +111,9 @@ class SimpleVariable(Variable[_S], Generic[_S]):
     def observe(self, observer: Observer | ValueObserver[_S]) -> None:
         self._on_change.observe(observer)
 
+    def weak_observe(self, observer: Observer | ValueObserver[_S]) -> None:
+        self._on_change.weak_observe(observer)
+
     def unobserve(self, observer: Observer | ValueObserver[_S]) -> None:
         self._on_change.unobserve(observer)
 
@@ -168,16 +171,25 @@ class Constant(Value[_S], Generic[_S]):
 class DerivedValueBase(Value[_T], Generic[_T], ABC):
     def __init__(self, *values: Value):
         self._values = frozenset(values)
+        self._on_change: ValueEvent[_T] = ValueEvent()
 
     def derived_from(self) -> frozenset[Value]:
         return self._values
+
+    def observe(self, observer: Observer | ValueObserver[_T]) -> None:
+        self._on_change.observe(observer)
+
+    def weak_observe(self, observer: Observer | ValueObserver[_T]) -> None:
+        self._on_change.weak_observe(observer)
+
+    def unobserve(self, observer: Observer | ValueObserver[_T]) -> None:
+        self._on_change.unobserve(observer)
 
 
 class DerivedValue(DerivedValueBase[_T], Generic[_S, _T], ABC):
     def __init__(self, of: Value[_S]):
         super().__init__(of)
         self._value = self.transform(of.value)
-        self._on_change: ValueEvent[_T] = ValueEvent()
         of.observe(self._on_source_change)
 
     @abstractmethod
@@ -193,12 +205,6 @@ class DerivedValue(DerivedValueBase[_T], Generic[_S, _T], ABC):
     @property
     def value(self) -> _T:
         return self._value
-
-    def observe(self, observer: Observer | ValueObserver[_T]) -> None:
-        self._on_change.observe(observer)
-
-    def unobserve(self, observer: Observer | ValueObserver[_T]) -> None:
-        self._on_change.unobserve(observer)
 
 
 def _create_value_getter(value: Value[_S] | _S) -> Callable[[], _S]:
