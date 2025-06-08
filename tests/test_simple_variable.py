@@ -1,0 +1,325 @@
+import pytest
+from pybind.values import SimpleVariable, Constant
+from conftest import NoParametersObserver, OneParameterObserver
+
+
+def test_simple_variable_constructor():
+    variable = SimpleVariable("initial_value")
+    assert variable.value == "initial_value"
+
+
+def test_simple_variable_set_same_value():
+    variable = SimpleVariable("test")
+    observer = OneParameterObserver()
+
+    variable.observe(observer)
+    variable.value = "test"
+
+    observer.assert_not_called()
+
+
+def test_simple_variable_set_different_value():
+    variable = SimpleVariable("initial")
+    observer = OneParameterObserver()
+
+    variable.observe(observer)
+    variable.value = "changed"
+
+    assert variable.value == "changed"
+    observer.assert_called_once_with("changed")
+
+
+def test_simple_variable_unobserve():
+    variable = SimpleVariable("test")
+    observer = OneParameterObserver()
+
+    variable.observe(observer)
+    variable.unobserve(observer)
+    variable.value = "changed"
+
+    observer.assert_not_called()
+
+
+def test_simple_variable_multiple_observers():
+    variable = SimpleVariable(1)
+    observer0 = NoParametersObserver()
+    observer1 = OneParameterObserver()
+
+    variable.observe(observer0)
+    variable.observe(observer1)
+    variable.value = 2
+
+    observer0.assert_called_once_with()
+    observer1.assert_called_once_with(2)
+
+
+def test_simple_variable_observe_lambda():
+    variable = SimpleVariable("start")
+    calls = []
+
+    variable.observe(lambda value: calls.append(value))
+    variable.value = "end"
+
+    assert calls == ["end"]
+
+
+def test_simple_variable_unobserve_lambda():
+    variable = SimpleVariable(5)
+    calls = []
+    observer = lambda value: calls.append(value)
+
+    variable.observe(observer)
+    variable.value = 10
+    variable.unobserve(observer)
+    variable.value = 15
+
+    assert calls == [10]
+
+
+def test_simple_variable_bind_to_constant():
+    variable = SimpleVariable("old")
+    constant = Constant("new")
+
+    variable.bind_to(constant)
+
+    assert variable.value == "new"
+
+
+def test_simple_variable_bind_to_simple_variable():
+    variable1 = SimpleVariable(100)
+    variable2 = SimpleVariable(200)
+
+    variable1.bind_to(variable2)
+
+    assert variable1.value == 200
+
+
+def test_simple_variable_bind_already_bound_error():
+    variable = SimpleVariable("test")
+    constant1 = Constant("value1")
+    constant2 = Constant("value2")
+
+    variable.bind_to(constant1)
+
+    with pytest.raises(ValueError):
+        variable.bind_to(constant2)
+
+
+def test_simple_variable_bind_already_bound_ok():
+    variable = SimpleVariable("test")
+    constant1 = Constant("value1")
+    constant2 = Constant("value2")
+
+    variable.bind_to(constant1)
+    variable.bind_to(constant2, already_bound_ok=True)
+
+    assert variable.value == "value2"
+
+
+def test_simple_variable_unbind():
+    variable = SimpleVariable("initial")
+    constant = Constant("bound_value")
+
+    variable.bind_to(constant)
+    variable.unbind()
+    variable.value = "after_unbind"
+
+    assert variable.value == "after_unbind"
+
+
+def test_simple_variable_unbind_not_bound_error():
+    variable = SimpleVariable("test")
+
+    with pytest.raises(ValueError):
+        variable.unbind()
+
+
+def test_simple_variable_unbind_not_bound_ok():
+    variable = SimpleVariable("test")
+
+    variable.unbind(not_bound_ok=True)
+
+    assert variable.value == "test"
+
+
+def test_simple_variable_bind_updates_value():
+    variable = SimpleVariable(0)
+    observer = OneParameterObserver()
+
+    variable.observe(observer)
+    constant = Constant(42)
+    variable.bind_to(constant)
+
+    observer.assert_called_once_with(42)
+
+
+def test_simple_variable_bound_value_changes_propagate():
+    variable1 = SimpleVariable("start")
+    variable2 = SimpleVariable("initial")
+    observer = OneParameterObserver()
+
+    variable1.bind_to(variable2)
+    variable1.observe(observer)
+    variable2.value = "propagated"
+
+    assert variable1.value == "propagated"
+    observer.assert_called_once_with("propagated")
+
+
+def test_simple_variable_unobserve_non_existent_observer():
+    variable = SimpleVariable("test")
+    observer = OneParameterObserver()
+
+    with pytest.raises(ValueError):
+        variable.unobserve(observer)
+
+
+def test_simple_variable_bind_to_itself():
+    variable = SimpleVariable("test")
+
+    with pytest.raises(RecursionError):
+        variable.bind_to(variable)
+
+
+def test_simple_variable_set_value_while_bound_raises():
+    variable = SimpleVariable("initial")
+    constant = Constant("constant")
+
+    variable.bind_to(constant)
+    with pytest.raises(ValueError):
+        variable.value = "manual_value"
+
+
+def test_simple_variable_with_none_values():
+    variable = SimpleVariable(None)
+    observer = OneParameterObserver()
+
+    variable.observe(observer)
+    variable.value = "not_none"
+
+    assert variable.value == "not_none"
+    observer.assert_called_once_with("not_none")
+
+
+def test_simple_variable_rebind_after_unbind():
+    variable = SimpleVariable("start")
+    constant1 = Constant("first")
+    constant2 = Constant("second")
+
+    variable.bind_to(constant1)
+    variable.unbind()
+    variable.bind_to(constant2)
+
+    assert variable.value == "second"
+
+
+def test_simple_variable_derived_from_empty():
+    variable = SimpleVariable("test")
+
+    assert variable.derived_from() == frozenset()
+
+
+def test_simple_variable_derived_from_bound():
+    variable = SimpleVariable("test")
+    constant = Constant("bound")
+
+    variable.bind_to(constant)
+
+    assert variable.derived_from() == frozenset([constant])
+
+
+def test_simple_variable_deep_derived_from_empty():
+    variable = SimpleVariable("test")
+
+    assert list(variable.deep_derived_from) == []
+
+
+def test_simple_variable_deep_derived_from_single_level():
+    variable = SimpleVariable("test")
+    constant = Constant("bound")
+
+    variable.bind_to(constant)
+
+    assert list(variable.deep_derived_from) == [constant]
+
+
+def test_simple_variable_deep_derived_from_two_levels():
+    variable1 = SimpleVariable("test1")
+    variable2 = SimpleVariable("test2")
+    constant = Constant("bound")
+
+    variable2.bind_to(constant)
+    variable1.bind_to(variable2)
+
+    dependencies = list(variable1.deep_derived_from)
+    assert len(dependencies) == 2
+    assert variable2 in dependencies
+    assert constant in dependencies
+
+
+def test_simple_variable_deep_derived_from_three_levels():
+    variable1 = SimpleVariable("test1")
+    variable2 = SimpleVariable("test2")
+    variable3 = SimpleVariable("test3")
+    constant = Constant("bound")
+
+    variable3.bind_to(constant)
+    variable2.bind_to(variable3)
+    variable1.bind_to(variable2)
+
+    dependencies = list(variable1.deep_derived_from)
+    assert len(dependencies) == 3
+    assert variable2 in dependencies
+    assert variable3 in dependencies
+    assert constant in dependencies
+
+
+def test_simple_variable_deep_derived_from_circular_two_variables():
+    variable1 = SimpleVariable("test1")
+    variable2 = SimpleVariable("test2")
+
+    variable1.bind_to(variable2)
+
+    with pytest.raises(RecursionError):
+        variable2.bind_to(variable1)
+
+
+def test_simple_variable_deep_derived_from_circular_three_variables():
+    variable1 = SimpleVariable("test1")
+    variable2 = SimpleVariable("test2")
+    variable3 = SimpleVariable("test3")
+
+    variable1.bind_to(variable2)
+    variable2.bind_to(variable3)
+
+    with pytest.raises(RecursionError):
+        variable3.bind_to(variable1)
+
+
+def test_simple_variable_deep_derived_from_diamond_pattern():
+    variable_top = SimpleVariable("top")
+    variable_left = SimpleVariable("left")
+    variable_right = SimpleVariable("right")
+    variable_bottom = SimpleVariable("bottom")
+
+    variable_left.bind_to(variable_top)
+    variable_right.bind_to(variable_top)
+    variable_bottom.bind_to(variable_left)
+    variable_bottom.bind_to(variable_right, already_bound_ok=True)
+
+    dependencies = list(variable_bottom.deep_derived_from)
+    assert len(dependencies) == 2
+    assert variable_right in dependencies
+    assert variable_top in dependencies
+
+
+def test_constant_derived_from_empty():
+    constant = Constant("test")
+
+    assert constant.derived_from() == frozenset()
+
+
+def test_constant_deep_derived_from_empty():
+    constant = Constant("test")
+
+    assert list(constant.deep_derived_from) == []
