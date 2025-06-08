@@ -161,6 +161,9 @@ class Constant(Value[_S], Generic[_S]):
     def observe(self, observer: Observer | ValueObserver[_S]) -> None:
         pass
 
+    def weak_observe(self, observer: Observer | ValueObserver[_S]) -> None:
+        pass
+
     def unobserve(self, observer: Observer | ValueObserver[_S]) -> None:
         pass
 
