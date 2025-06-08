@@ -58,6 +58,12 @@ class Value(ValueObservable[_S], Generic[_S], ABC):
         from pybind.str_values import ToStrValue
         return ToStrValue(self)
 
+    def __str__(self) -> str:
+        return str(self.value)
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}({self.value!r})"
+
 
 class Variable(Value[_S], Generic[_S], ABC):
     @property

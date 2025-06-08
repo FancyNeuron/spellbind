@@ -118,7 +118,7 @@ def test_simple_variable_bind_already_bound_ok():
     assert variable.value == "value2"
 
 
-def test_simple_variable_unbind():
+def test_simple_variable_change_after_unbind():
     variable = SimpleVariable("initial")
     constant = Constant("bound_value")
 
@@ -127,6 +127,25 @@ def test_simple_variable_unbind():
     variable.value = "after_unbind"
 
     assert variable.value == "after_unbind"
+
+
+def test_simple_variable_change_without_unbind_raises():
+    variable = SimpleVariable("initial")
+    constant = Constant("bound_value")
+
+    variable.bind_to(constant)
+    with pytest.raises(ValueError):
+        variable.value = "after_unbind"
+
+
+def test_simple_variable_change_root_after_unbind():
+    dependent = SimpleVariable("dependent")
+    root = SimpleVariable("root")
+
+    dependent.bind_to(root)
+    dependent.unbind()
+    root.value = "new_root_value"
+    assert dependent.value == "root"
 
 
 def test_simple_variable_unbind_not_bound_error():
@@ -364,3 +383,28 @@ def test_daisy_chain_variables_weak_reference_stays():
     root_var.value = "root2"
 
     assert values == ["root1", "root2"]
+
+
+def test_simple_int_variable_str():
+    var_int = SimpleVariable(42)
+    assert str(var_int) == "42"
+
+
+def test_simple_str_variable_str():
+    var_str = SimpleVariable("hello")
+    assert str(var_str) == "hello"
+
+
+def test_simple_float_variable_str():
+    var_float = SimpleVariable(3.14)
+    assert str(var_float) == "3.14"
+
+
+def test_simple_bool_variable_str():
+    var_bool = SimpleVariable(True)
+    assert str(var_bool) == "True"
+
+
+def test_simple_none_variable_str():
+    none_bool = SimpleVariable(None)
+    assert str(none_bool) == "None"

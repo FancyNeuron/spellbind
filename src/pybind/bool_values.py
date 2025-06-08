@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from abc import ABC
 
-from pybind.values import Value, DerivedValue, _S, _T
+from pybind.values import Value, DerivedValue, _S, _T, Constant
 
 
 class BoolValue(Value[bool], ABC):
@@ -16,3 +16,11 @@ class NotBoolValue(DerivedValue[bool, bool], BoolValue):
 
     def transform(self, value: bool) -> bool:
         return not value
+
+
+class BoolConstant(BoolValue, Constant[bool]):
+    pass
+
+
+TRUE = BoolConstant(True)
+FALSE = BoolConstant(False)
