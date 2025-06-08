@@ -71,7 +71,7 @@ class Variable(Value[_S], Generic[_S], ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def bind_to(self, value: Value[_S], already_bound_ok: bool = False) -> None:
+    def bind_to(self, value: Value[_S], already_bound_ok: bool = False, bind_weakly: bool = True) -> None:
         raise NotImplementedError
 
     @abstractmethod
@@ -117,7 +117,7 @@ class SimpleVariable(Variable[_S], Generic[_S]):
     def unobserve(self, observer: Observer | ValueObserver[_S]) -> None:
         self._on_change.unobserve(observer)
 
-    def bind_to(self, value: Value[_S], already_bound_ok: bool = False) -> None:
+    def bind_to(self, value: Value[_S], already_bound_ok: bool = False, bind_weakly: bool = True) -> None:
         if value is self:
             raise RecursionError("Cannot bind a Variable to itself.")
         if value.is_dependent_on(self):
@@ -128,7 +128,10 @@ class SimpleVariable(Variable[_S], Generic[_S]):
             if self._bound_to is value:
                 return
             self.unbind()
-        value.observe(self._receive_bound_value)
+        if bind_weakly:
+            value.weak_observe(self._receive_bound_value)
+        else:
+            value.observe(self._receive_bound_value)
         self._bound_to = value
         self._bound_to_set = frozenset([value])
         self._set_value_bypass_bound_check(value.value)
