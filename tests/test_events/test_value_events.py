@@ -4,7 +4,7 @@ from conftest import NoParametersObserver, OneParameterObserver, OneDefaultParam
     OneRequiredOneDefaultParameterObserver
 
 
-def test_value_event_unobserve_non_existent_observer():
+def test_value_event_unobserve_nonexistent_mock_observer_fails():
     event = ValueEvent[str]()
     observer = OneParameterObserver()
 
@@ -12,7 +12,7 @@ def test_value_event_unobserve_non_existent_observer():
         event.unobserve(observer)
 
 
-def test_value_event_observe_same_observer_multiple_times():
+def test_value_event_observe_same_mock_observer_multiple_times():
     event = ValueEvent[str]()
     observer = OneParameterObserver()
 
@@ -28,7 +28,7 @@ def test_value_event_call_with_no_observers():
     event("test_value")  # Should not raise
 
 
-def test_value_event_observers_called_in_order():
+def test_value_event_call_lambda_observers_in_order():
     event = ValueEvent[str]()
     call_order = []
 
@@ -41,7 +41,7 @@ def test_value_event_observers_called_in_order():
     assert call_order == ["first", "second", "third"]
 
 
-def test_value_event_call_with_none_value():
+def test_value_event_call_mock_observer_with_none_value():
     event = ValueEvent[str | None]()
     observer = OneParameterObserver()
 
@@ -51,7 +51,7 @@ def test_value_event_call_with_none_value():
     observer.assert_called_once_with(None)
 
 
-def test_value_event_observe_and_call_no_parameters_mock_observer():
+def test_value_event_observe_no_parameters_mock_observer():
     event = ValueEvent[str]()
     observer = NoParametersObserver()
 
@@ -61,7 +61,7 @@ def test_value_event_observe_and_call_no_parameters_mock_observer():
     observer.assert_called_once_with()
 
 
-def test_value_event_observe_and_call_one_parameter_mock_observer():
+def test_value_event_observe_one_parameter_mock_observer():
     event = ValueEvent[str]()
     observer = OneParameterObserver()
 
@@ -71,7 +71,7 @@ def test_value_event_observe_and_call_one_parameter_mock_observer():
     observer.assert_called_once_with("test_value")
 
 
-def test_value_event_observe_and_call_one_default_parameter_mock_observer():
+def test_value_event_observe_one_default_parameter_mock_observer():
     event = ValueEvent[str]()
     observer = OneDefaultParameterObserver()
 
@@ -81,7 +81,7 @@ def test_value_event_observe_and_call_one_default_parameter_mock_observer():
     observer.assert_called_once_with("test_value")
 
 
-def test_value_event_observe_and_call_one_required_one_default_parameter_mock_observer():
+def test_value_event_observe_one_required_one_default_parameter_mock_observer():
     event = ValueEvent[str]()
     observer = OneRequiredOneDefaultParameterObserver()
 
@@ -102,7 +102,7 @@ def test_value_event_unobserve_mock_observer():
     observer.assert_not_called()
 
 
-def test_value_event_multiple_mock_observers():
+def test_value_event_call_multiple_mock_observers():
     event = ValueEvent[str]()
     observer0 = NoParametersObserver()
     observer1 = OneParameterObserver()
@@ -115,7 +115,7 @@ def test_value_event_multiple_mock_observers():
     observer1.assert_called_once_with("hello")
 
 
-def test_value_event_observer_with_too_many_parameters():
+def test_value_event_observe_function_observer_too_many_parameters_fails():
     event = ValueEvent[str]()
 
     def bad_observer(param0, param1):
@@ -125,7 +125,7 @@ def test_value_event_observer_with_too_many_parameters():
         event.observe(bad_observer)
 
 
-def test_value_event_observe_and_call_lambda_no_parameters():
+def test_value_event_observe_lambda_no_parameters():
     event = ValueEvent[str]()
     called = []
 
@@ -135,7 +135,7 @@ def test_value_event_observe_and_call_lambda_no_parameters():
     assert called == [True]
 
 
-def test_value_event_observe_and_call_lambda_one_parameter():
+def test_value_event_observe_lambda_one_parameter():
     event = ValueEvent[str]()
     received_values = []
 
@@ -145,7 +145,7 @@ def test_value_event_observe_and_call_lambda_one_parameter():
     assert received_values == ["test_value"]
 
 
-def test_value_event_observe_and_call_lambda_one_default_parameter():
+def test_value_event_observe_lambda_one_default_parameter():
     event = ValueEvent[str]()
     received_values = []
 
@@ -155,7 +155,7 @@ def test_value_event_observe_and_call_lambda_one_default_parameter():
     assert received_values == ["test_value"]
 
 
-def test_value_event_unobserve_lambda():
+def test_value_event_unobserve_lambda_observer():
     event = ValueEvent[int]()
     called = []
     observer = lambda value0: called.append(value0)
@@ -167,14 +167,14 @@ def test_value_event_unobserve_lambda():
     assert called == []
 
 
-def test_value_event_lambda_with_too_many_parameters():
+def test_value_event_observe_lambda_observer_too_many_parameters_fails():
     event = ValueEvent[str]()
 
     with pytest.raises(ValueError, match="has too many non-default parameters: 2 > 1"):
         event.observe(lambda param0, param1: None)
 
 
-def test_value_event_call_with_two_parameters():
+def test_value_event_call_with_two_parameters_fails():
     event = ValueEvent[str]()
 
     with pytest.raises(TypeError):

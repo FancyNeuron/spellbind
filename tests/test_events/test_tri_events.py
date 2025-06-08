@@ -5,7 +5,7 @@ from conftest import NoParametersObserver, OneParameterObserver, OneDefaultParam
     ThreeParametersObserver, ThreeDefaultParametersObserver, TwoRequiredOneDefaultParameterObserver
 
 
-def test_tri_event_observe_and_call_no_parameters_mock_observer():
+def test_tri_event_observe_no_parameters_mock_observer():
     event = TriEvent[str, int, bool]()
     observer = NoParametersObserver()
 
@@ -15,7 +15,7 @@ def test_tri_event_observe_and_call_no_parameters_mock_observer():
     observer.assert_called_once_with()
 
 
-def test_tri_event_observe_and_call_one_parameter_mock_observer():
+def test_tri_event_observe_one_parameter_mock_observer():
     event = TriEvent[str, int, bool]()
     observer = OneParameterObserver()
 
@@ -25,7 +25,7 @@ def test_tri_event_observe_and_call_one_parameter_mock_observer():
     observer.assert_called_once_with("test_value")
 
 
-def test_tri_event_observe_and_call_one_default_parameter_mock_observer():
+def test_tri_event_observe_one_default_parameter_mock_observer():
     event = TriEvent[str, int, bool]()
     observer = OneDefaultParameterObserver()
 
@@ -35,7 +35,7 @@ def test_tri_event_observe_and_call_one_default_parameter_mock_observer():
     observer.assert_called_once_with("test_value")
 
 
-def test_tri_event_observe_and_call_one_required_one_default_parameter_mock_observer():
+def test_tri_event_observe_one_required_one_default_parameter_mock_observer():
     event = TriEvent[str, int, bool]()
     observer = OneRequiredOneDefaultParameterObserver()
 
@@ -45,7 +45,7 @@ def test_tri_event_observe_and_call_one_required_one_default_parameter_mock_obse
     observer.assert_called_once_with("test_value", 42)
 
 
-def test_tri_event_observe_and_call_two_parameters_mock_observer():
+def test_tri_event_observe_two_parameters_mock_observer():
     event = TriEvent[str, int, bool]()
     observer = TwoParametersObserver()
 
@@ -55,7 +55,7 @@ def test_tri_event_observe_and_call_two_parameters_mock_observer():
     observer.assert_called_once_with("test_value", 42)
 
 
-def test_tri_event_observe_and_call_two_required_one_default_parameter_mock_observer():
+def test_tri_event_observe_two_required_one_default_parameter_mock_observer():
     event = TriEvent[str, int, bool]()
     observer = TwoRequiredOneDefaultParameterObserver()
 
@@ -65,7 +65,7 @@ def test_tri_event_observe_and_call_two_required_one_default_parameter_mock_obse
     observer.assert_called_once_with("test_value", 42, True)
 
 
-def test_tri_event_observe_and_call_three_parameters_mock_observer():
+def test_tri_event_observe_three_parameters_mock_observer():
     event = TriEvent[str, int, bool]()
     observer = ThreeParametersObserver()
 
@@ -87,7 +87,7 @@ def test_tri_event_unobserve_mock_observer():
     observer.assert_called_once_with("test0", 0, False)
 
 
-def test_tri_event_multiple_mock_observers():
+def test_tri_event_call_multiple_mock_observers():
     event = TriEvent[str, int, bool]()
     observer0 = NoParametersObserver()
     observer1 = OneParameterObserver()
@@ -106,7 +106,7 @@ def test_tri_event_multiple_mock_observers():
     observer3.assert_called_once_with("hello", 123, False)
 
 
-def test_tri_event_function_observer_with_too_many_parameters():
+def test_tri_event_observe_function_observer_too_many_parameters_fails():
     event = TriEvent[str, int, bool]()
 
     def bad_observer(param0, param1, param2, param3):
@@ -116,7 +116,7 @@ def test_tri_event_function_observer_with_too_many_parameters():
         event.observe(bad_observer)
 
 
-def test_tri_event_observe_and_call_lambda_no_parameters():
+def test_tri_event_observe_lambda_no_parameters():
     event = TriEvent[str, int, bool]()
     calls = []
 
@@ -126,7 +126,7 @@ def test_tri_event_observe_and_call_lambda_no_parameters():
     assert calls == [True]
 
 
-def test_tri_event_observe_and_call_lambda_one_parameter():
+def test_tri_event_observe_lambda_one_parameter():
     event = TriEvent[str, int, bool]()
     calls = []
 
@@ -136,7 +136,7 @@ def test_tri_event_observe_and_call_lambda_one_parameter():
     assert calls == ["test_value"]
 
 
-def test_tri_event_observe_and_call_lambda_two_parameters():
+def test_tri_event_observe_lambda_two_parameters():
     event = TriEvent[str, int, bool]()
     calls = []
 
@@ -146,7 +146,7 @@ def test_tri_event_observe_and_call_lambda_two_parameters():
     assert calls == [("test_value", 42)]
 
 
-def test_tri_event_observe_and_call_lambda_three_parameters():
+def test_tri_event_observe_lambda_three_parameters():
     event = TriEvent[str, int, bool]()
     calls = []
 
@@ -156,7 +156,7 @@ def test_tri_event_observe_and_call_lambda_three_parameters():
     assert calls == [("test_value", 42, False)]
 
 
-def test_tri_event_unobserve_lambda():
+def test_tri_event_unobserve_lambda_observer():
     event = TriEvent[str, int, bool]()
     calls = []
     observer = lambda value0, value1, value2: calls.append((value0, value1, value2))
@@ -169,35 +169,35 @@ def test_tri_event_unobserve_lambda():
     assert calls == [("test0", 0, False)]
 
 
-def test_tri_event_lambda_with_too_many_parameters():
+def test_tri_event_observe_lambda_observer_too_many_parameters_fails():
     event = TriEvent[str, int, bool]()
 
     with pytest.raises(ValueError):
         event.observe(lambda param0, param1, param2, param3: None)
 
 
-def test_tri_event_call_with_one_parameter():
+def test_tri_event_call_with_one_parameter_fails():
     event = TriEvent[str, int, bool]()
 
     with pytest.raises(TypeError):
         event("param0")
 
 
-def test_tri_event_call_with_two_parameters():
+def test_tri_event_call_with_two_parameters_fails():
     event = TriEvent[str, int, bool]()
 
     with pytest.raises(TypeError):
         event("param0", 42)
 
 
-def test_tri_event_call_with_four_parameters():
+def test_tri_event_call_with_four_parameters_fails():
     event = TriEvent[str, int, bool]()
 
     with pytest.raises(TypeError):
         event("param0", 42, True, "param3")
 
 
-def test_tri_event_unobserve_non_existent_observer():
+def test_tri_event_unobserve_nonexistent_mock_observer_fails():
     event = TriEvent[str, int, bool]()
     observer = ThreeParametersObserver()
 
@@ -205,7 +205,7 @@ def test_tri_event_unobserve_non_existent_observer():
         event.unobserve(observer)
 
 
-def test_tri_event_observe_same_observer_multiple_times():
+def test_tri_event_observe_same_mock_observer_multiple_times():
     event = TriEvent[str, int, bool]()
     observer = ThreeParametersObserver()
 
@@ -222,7 +222,7 @@ def test_tri_event_call_with_no_observers():
     event("test_value", 42, False)  # Should not raise
 
 
-def test_tri_event_observers_called_in_order():
+def test_tri_event_call_lambda_observers_in_order():
     event = TriEvent[str, int, bool]()
     call_order = []
 
@@ -235,7 +235,7 @@ def test_tri_event_observers_called_in_order():
     assert call_order == ["first", "second", "third"]
 
 
-def test_tri_event_call_with_none_values():
+def test_tri_event_call_mock_observer_with_none_values():
     event = TriEvent[str | None, int | None, bool | None]()
     observer = ThreeParametersObserver()
 
