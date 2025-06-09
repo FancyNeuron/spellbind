@@ -1,5 +1,7 @@
 from __future__ import annotations
+from typing_extensions import Self
 
+import math
 import operator
 from abc import ABC
 from typing import overload
@@ -92,6 +94,21 @@ class IntValue(Value[int], ABC):
     def __rfloordiv__(self, other: int) -> IntValue:
         return FloorDivideIntValues(other, self)
 
+    def __pow__(self, other: IntLike) -> IntValue:
+        return PowerIntValues(self, other)
+
+    def __rpow__(self, other: int) -> IntValue:
+        return PowerIntValues(other, self)
+
+    def __mod__(self, other: IntLike) -> IntValue:
+        return ModuloIntValues(self, other)
+
+    def __rmod__(self, other: int) -> IntValue:
+        return ModuloIntValues(other, self)
+
+    def __abs__(self) -> IntValue:
+        return AbsIntValue(self)
+
     def __lt__(self, other: FloatLike) -> BoolValue:
         return CompareNumbersValues(self, other, operator.lt)
 
@@ -106,6 +123,9 @@ class IntValue(Value[int], ABC):
 
     def __neg__(self) -> IntValue:
         return NegateIntValue(self)
+
+    def __pos__(self) -> Self:
+        return self
 
 
 class IntConstant(IntValue, Constant[int]):
@@ -122,9 +142,6 @@ class AddIntValues(CombinedMixedValues[int, int], IntValue):
 
 
 class SubtractIntValues(CombinedTwoValues[int, int, int], IntValue):
-    def __init__(self, left: IntLike, right: IntLike):
-        super().__init__(left, right)
-
     def transform(self, left: int, right: int) -> int:
         return left - right
 
@@ -138,21 +155,45 @@ class MultiplyIntValues(CombinedMixedValues[int, int], IntValue):
 
 
 class DivideIntValues(CombinedTwoValues[int, int, float], FloatValue):
-    def __init__(self, left: IntLike, right: IntLike):
-        super().__init__(left, right)
-
     def transform(self, left: int, right: int) -> float:
         return left / right
 
 
 class FloorDivideIntValues(CombinedTwoValues[int, int, int], IntValue):
-    def __init__(self, left: IntLike, right: IntLike):
-        super().__init__(left, right)
-
     def transform(self, left: int, right: int) -> int:
         return left // right
+
+
+class PowerIntValues(CombinedTwoValues[int, int, int], IntValue):
+    def transform(self, left: int, right: int) -> int:
+        return left ** right
+
+
+class ModuloIntValues(CombinedTwoValues[int, int, int], IntValue):
+    def transform(self, left: int, right: int) -> int:
+        return left % right
+
+
+class AbsIntValue(DerivedValue[int, int], IntValue):
+    def transform(self, value: int) -> int:
+        return abs(value)
 
 
 class NegateIntValue(DerivedValue[int, int], IntValue):
     def transform(self, value: int) -> int:
         return -value
+
+
+class FloorFloatValue(DerivedValue[float, int], IntValue):
+    def transform(self, value: float) -> int:
+        return math.floor(value)
+
+
+class CeilFloatValue(DerivedValue[float, int], IntValue):
+    def transform(self, value: float) -> int:
+        return math.ceil(value)
+
+
+class RoundFloatToIntValue(DerivedValue[float, int], IntValue):
+    def transform(self, value: float) -> int:
+        return round(value)
