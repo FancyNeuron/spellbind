@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=42", "wheel", "setuptools-scm"]
+requires = ["setuptools>=61", "wheel", "setuptools-scm"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -9,15 +9,46 @@ authors = [
     {name = "Georg Plaz", email = "georg.plaz@gmail.com"},
 ]
 description = "A library which provides observable values to which other values can be bound"
+readme = "README.md"
+
 requires-python = ">=3.10"
 license = {file = "LICENSE"}
+
+keywords = [
+    "reactive", "programming", "computed", "derived",
+    "values", "variables", "data-binding",
+    "observable", "events", "event-driven"
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Typing :: Typed",
+]
+
+[project.urls]
+Homepage = "https://github.com/FancyNeuron/spellbind"
+Repository = "https://github.com/FancyNeuron/spellbind"
+Issues = "https://github.com/FancyNeuron/spellbind/issues"
+Documentation = "https://github.com/FancyNeuron/spellbind#readme"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+spellbind = ["py.typed"]
 
 [tool.pytest.ini_options]
 minversion = "6.0"
 addopts = "--strict-markers"
-testpaths = [
-    "tests",
-]
+testpaths = ["tests"]
+
 [tool.coverage.run]
 source = ["src"]
 
@@ -28,3 +59,5 @@ testing = [
     "flake8",
     "mypy",
 ]
+
+[tool.setuptools_scm]
