@@ -5,7 +5,7 @@ import pytest
 from conftest import NoParametersObserver, OneParameterObserver, OneDefaultParameterObserver, \
     OneRequiredOneDefaultParameterObserver, TwoParametersObserver, TwoDefaultParametersObserver, \
     ThreeParametersObserver
-from pybind.event import BiEvent
+from spellbind.event import BiEvent
 
 
 def test_bi_event_weak_observe_mock_observer_adds_subscription():

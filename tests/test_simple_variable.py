@@ -1,7 +1,7 @@
 import gc
 
 import pytest
-from pybind.values import SimpleVariable, Constant
+from spellbind.values import SimpleVariable, Constant
 from conftest import NoParametersObserver, OneParameterObserver
 
 

@@ -1,9 +1,9 @@
 from abc import ABC, abstractmethod
 from typing import Callable, TypeVar, Generic
 
-from pybind.emitters import Emitter, TriEmitter, BiEmitter, ValueEmitter
-from pybind.functions import assert_parameter_max_count
-from pybind.observables import Observable, ValueObservable, BiObservable, TriObservable, Observer, \
+from spellbind.emitters import Emitter, TriEmitter, BiEmitter, ValueEmitter
+from spellbind.functions import assert_parameter_max_count
+from spellbind.observables import Observable, ValueObservable, BiObservable, TriObservable, Observer, \
     ValueObserver, BiObserver, TriObserver, Subscription, DeadReferenceError, WeakSubscription, StrongSubscription
 
 _S = TypeVar("_S")

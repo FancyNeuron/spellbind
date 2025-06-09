@@ -1,4 +1,4 @@
-from pybind.float_values import FloatConstant
+from spellbind.float_values import FloatConstant
 
 
 def test_float_constant_str():

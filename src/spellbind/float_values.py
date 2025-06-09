@@ -4,11 +4,11 @@ import operator
 from abc import ABC, abstractmethod
 from typing import Generic, Callable, Sequence, TypeVar
 
-from pybind.bool_values import BoolValue
-from pybind.event import ValueEvent
-from pybind.observables import Observer, ValueObserver
+from spellbind.bool_values import BoolValue
+from spellbind.event import ValueEvent
+from spellbind.observables import Observer, ValueObserver
 
-from pybind.values import Value, CombinedMixedValues, SimpleVariable, CombinedTwoValues, _create_value_getter, \
+from spellbind.values import Value, CombinedMixedValues, SimpleVariable, CombinedTwoValues, _create_value_getter, \
     DerivedValue, DerivedValueBase, Constant
 
 FloatLike = int | Value[int] | float | Value[float]

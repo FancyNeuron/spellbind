@@ -3,11 +3,11 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import TypeVar, Generic, Optional, Any, Iterable, TYPE_CHECKING, Sequence, Callable
 
-from pybind.event import ValueEvent
-from pybind.observables import ValueObservable, Observer, ValueObserver
+from spellbind.event import ValueEvent
+from spellbind.observables import ValueObservable, Observer, ValueObserver
 
 if TYPE_CHECKING:
-    from pybind.str_values import StrValue
+    from spellbind.str_values import StrValue
 
 
 EMPTY_FROZEN_SET: frozenset = frozenset()
@@ -55,7 +55,7 @@ class Value(ValueObservable[_S], Generic[_S], ABC):
         return False
 
     def to_str(self) -> StrValue:
-        from pybind.str_values import ToStrValue
+        from spellbind.str_values import ToStrValue
         return ToStrValue(self)
 
     def __str__(self) -> str:

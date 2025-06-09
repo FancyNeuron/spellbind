@@ -4,7 +4,7 @@ import pytest
 
 from conftest import NoParametersObserver, OneParameterObserver, OneDefaultParameterObserver, \
     OneRequiredOneDefaultParameterObserver, TwoParametersObserver
-from pybind.event import ValueEvent
+from spellbind.event import ValueEvent
 
 
 def test_value_event_weak_observe_mock_observer_adds_subscription():

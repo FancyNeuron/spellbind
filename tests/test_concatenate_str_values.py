@@ -1,4 +1,4 @@
-from pybind.str_values import StrVariable
+from spellbind.str_values import StrVariable
 
 
 def test_concatenate_str_values():

@@ -3,7 +3,7 @@ from __future__ import annotations
 from abc import ABC
 from typing import Any
 
-from pybind.values import Value, DerivedValue, CombinedMixedValues, SimpleVariable, Constant
+from spellbind.values import Value, DerivedValue, CombinedMixedValues, SimpleVariable, Constant
 
 StringLike = str | Value[str]
 

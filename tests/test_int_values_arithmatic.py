@@ -1,5 +1,5 @@
-from pybind.int_values import IntVariable
-from pybind.float_values import FloatVariable
+from spellbind.int_values import IntVariable
+from spellbind.float_values import FloatVariable
 
 
 # Addition Tests
