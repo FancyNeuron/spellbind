@@ -1,13 +1,19 @@
 from __future__ import annotations
+from typing_extensions import Self
 
 import operator
 from abc import ABC, abstractmethod
-from typing import Generic, Callable, Sequence, TypeVar
+from typing import Generic, Callable, Sequence, TypeVar, overload
+
+from typing_extensions import TYPE_CHECKING
 
 from spellbind.bool_values import BoolValue
-from spellbind.values import Value, SimpleVariable, DerivedValue, DerivedValueBase, Constant
+from spellbind.values import Value, SimpleVariable, DerivedValue, DerivedValueBase, Constant, CombinedTwoValues
 
-FloatLike = int | Value[int] | float | Value[float]
+if TYPE_CHECKING:
+    from spellbind.int_values import IntValue, IntLike
+
+FloatLike = Value[int] | float | Value[float]
 
 _S = TypeVar("_S")
 _T = TypeVar("_T")
@@ -39,6 +45,41 @@ class FloatValue(Value[float], ABC):
     def __rtruediv__(self, other: int | float) -> FloatValue:
         return DivideValues(other, self)
 
+    def __pow__(self, other: FloatLike) -> FloatValue:
+        return PowerFloatValues(self, other)
+
+    def __rpow__(self, other: FloatLike) -> FloatValue:
+        return PowerFloatValues(other, self)
+
+    def __mod__(self, other: FloatLike) -> FloatValue:
+        return ModuloFloatValues(self, other)
+
+    def __rmod__(self, other: int | float) -> FloatValue:
+        return ModuloFloatValues(other, self)
+
+    def __abs__(self) -> FloatValue:
+        return AbsFloatValue(self)
+
+    def floor(self) -> IntValue:
+        from spellbind.int_values import FloorFloatValue
+        return FloorFloatValue(self)
+
+    def ceil(self) -> IntValue:
+        from spellbind.int_values import CeilFloatValue
+        return CeilFloatValue(self)
+
+    @overload
+    def round(self) -> IntValue: ...
+
+    @overload
+    def round(self, ndigits: IntLike) -> FloatValue: ...
+
+    def round(self, ndigits: IntLike | None = None) -> FloatValue | IntValue:
+        if ndigits is None:
+            from spellbind.int_values import RoundFloatToIntValue
+            return RoundFloatToIntValue(self)
+        return RoundFloatValue(self, ndigits)
+
     def __lt__(self, other: FloatLike) -> BoolValue:
         return CompareNumbersValues(self, other, operator.lt)
 
@@ -53,6 +94,9 @@ class FloatValue(Value[float], ABC):
 
     def __neg__(self) -> FloatValue:
         return NegateFloatValue(self)
+
+    def __pos__(self) -> Self:
+        return self
 
 
 class FloatConstant(FloatValue, Constant[float]):
@@ -106,9 +150,7 @@ class CombinedFloatValues(DerivedValueBase[_U], Generic[_U], ABC):
 
 
 class CombinedTwoFloatValues(CombinedFloatValues[_U], Generic[_U], ABC):
-    def __init__(self,
-                 left: float | Value[int] | Value[float],
-                 right: float | Value[int] | Value[float]):
+    def __init__(self, left: FloatLike, right: FloatLike):
         super().__init__(left, right)
 
     def transform(self, values: Sequence[float]) -> _U:
@@ -128,9 +170,6 @@ class AddFloatValues(CombinedFloatValues[float], FloatValue):
 
 
 class SubtractFloatValues(CombinedTwoFloatValues[float], FloatValue):
-    def __init__(self, left: FloatLike, right: FloatLike):
-        super().__init__(left, right)
-
     def transform_two(self, left: float, right: float) -> float:
         return left - right
 
@@ -147,15 +186,35 @@ class MultiplyFloatValues(CombinedFloatValues[float], FloatValue):
 
 
 class DivideValues(CombinedTwoFloatValues[float], FloatValue):
-    def __init__(self, left: FloatLike, right: FloatLike):
-        super().__init__(left, right)
-
     def transform_two(self, left: float, right: float) -> float:
         return left / right
 
 
 class FloatVariable(SimpleVariable[float], FloatValue):
     pass
+
+
+class RoundFloatValue(CombinedTwoValues[float, int, float], FloatValue):
+    def __init__(self, value: FloatValue, ndigits: IntLike):
+        super().__init__(value, ndigits)
+
+    def transform(self, value: float, ndigits: int) -> float:
+        return round(value, ndigits)
+
+
+class ModuloFloatValues(CombinedTwoFloatValues[float], FloatValue):
+    def transform_two(self, left: float, right: float) -> float:
+        return left % right
+
+
+class AbsFloatValue(DerivedValue[float, float], FloatValue):
+    def transform(self, value: float) -> float:
+        return abs(value)
+
+
+class PowerFloatValues(CombinedTwoFloatValues[float], FloatValue):
+    def transform_two(self, left: float, right: float) -> float:
+        return left ** right
 
 
 class NegateFloatValue(DerivedValue[float, float], FloatValue):

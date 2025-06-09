@@ -275,3 +275,89 @@ def test_negate_int_value_zero():
 
     v0.value = 7
     assert v1.value == -7
+
+
+# Power Tests
+def test_power_int_values():
+    v0 = IntVariable(2)
+    v1 = IntVariable(3)
+    v2 = v0 ** v1
+    assert v2.value == 8
+
+    v0.value = 3
+    assert v2.value == 27
+
+
+def test_power_int_value_to_int():
+    v0 = IntVariable(2)
+    v2 = v0 ** 3
+    assert v2.value == 8
+
+    v0.value = 3
+    assert v2.value == 27
+
+
+def test_power_int_to_int_value():
+    v1 = IntVariable(3)
+    v2 = 2 ** v1
+    assert v2.value == 8
+
+    v1.value = 4
+    assert v2.value == 16
+
+
+# Modulo Tests
+def test_modulo_int_values():
+    v0 = IntVariable(10)
+    v1 = IntVariable(3)
+    v2 = v0 % v1
+    assert v2.value == 1
+
+    v0.value = 15
+    assert v2.value == 0
+
+
+def test_modulo_int_value_by_int():
+    v0 = IntVariable(10)
+    v2 = v0 % 3
+    assert v2.value == 1
+
+    v0.value = 15
+    assert v2.value == 0
+
+
+def test_modulo_int_by_int_value():
+    v1 = IntVariable(3)
+    v2 = 10 % v1
+    assert v2.value == 1
+
+    v1.value = 4
+    assert v2.value == 2
+
+
+# Absolute Value Tests
+def test_abs_int_value_positive():
+    v0 = IntVariable(5)
+    v1 = abs(v0)
+    assert v1.value == 5
+
+    v0.value = 10
+    assert v1.value == 10
+
+
+def test_abs_int_value_negative():
+    v0 = IntVariable(-5)
+    v1 = abs(v0)
+    assert v1.value == 5
+
+    v0.value = -10
+    assert v1.value == 10
+
+
+def test_abs_int_value_zero():
+    v0 = IntVariable(0)
+    v1 = abs(v0)
+    assert v1.value == 0
+
+    v0.value = -7
+    assert v1.value == 7
