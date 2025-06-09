@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import TypeVar, Generic, Optional, Any, Iterable, TYPE_CHECKING, Sequence, Callable
+from typing import TypeVar, Generic, Optional, Any, Iterable, TYPE_CHECKING, Callable
 
 from spellbind.event import ValueEvent
 from spellbind.observables import ValueObservable, Observer, ValueObserver

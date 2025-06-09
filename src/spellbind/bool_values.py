@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from abc import ABC
 
-from spellbind.values import Value, DerivedValue, _S, _T, Constant
+from spellbind.values import Value, DerivedValue, Constant
 
 
 class BoolValue(Value[bool], ABC):

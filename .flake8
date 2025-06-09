@@ -6,7 +6,6 @@ exclude =
     env,
     gen_resources,
     build,
-extend-ignore=F401,E704,E226
 
 # Allow assigning lambdas in tests
 per-file-ignores =
