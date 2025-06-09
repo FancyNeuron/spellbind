@@ -3,7 +3,7 @@ import gc
 import pytest
 
 from conftest import NoParametersObserver, OneParameterObserver, OneDefaultParameterObserver, \
-    OneRequiredOneDefaultParameterObserver, TwoParametersObserver, TwoDefaultParametersObserver, \
+    OneRequiredOneDefaultParameterObserver, TwoParametersObserver, \
     ThreeParametersObserver, ThreeDefaultParametersObserver, TwoRequiredOneDefaultParameterObserver
 from spellbind.event import TriEvent
 

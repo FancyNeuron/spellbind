@@ -1,8 +1,9 @@
 import pytest
-from spellbind.event import TriEvent
+
 from conftest import NoParametersObserver, OneParameterObserver, OneDefaultParameterObserver, \
-    OneRequiredOneDefaultParameterObserver, TwoParametersObserver, TwoDefaultParametersObserver, \
-    ThreeParametersObserver, ThreeDefaultParametersObserver, TwoRequiredOneDefaultParameterObserver
+    OneRequiredOneDefaultParameterObserver, TwoParametersObserver, ThreeParametersObserver, \
+    TwoRequiredOneDefaultParameterObserver
+from spellbind.event import TriEvent
 
 
 def test_tri_event_observe_no_parameters_mock_observer():
