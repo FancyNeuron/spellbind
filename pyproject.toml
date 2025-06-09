@@ -10,8 +10,7 @@ authors = [
 ]
 description = "A library which provides observable values to which other values can be bound"
 requires-python = ">=3.10"
-license = {text = "Proprietary"}
-
+license = {file = "LICENSE"}
 
 [tool.pytest.ini_options]
 minversion = "6.0"
