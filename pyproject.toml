@@ -21,7 +21,7 @@ testpaths = [
 ]
 [tool.coverage.run]
 source = ["src"]
-omit = ["*/version.py"]
+omit = ["*/_version.py"]
 
 [project.optional-dependencies]
 testing = [
@@ -29,7 +29,8 @@ testing = [
     "pytest-cov",
     "flake8",
     "mypy",
+    "setuptools_scm"
 ]
 
-#[tool.setuptools_scm]
-#version_file = "src/spellbind/version.py"
+[tool.setuptools_scm]
+version_file = "src/spellbind/_version.py"
