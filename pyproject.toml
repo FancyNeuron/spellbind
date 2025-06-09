@@ -5,15 +5,13 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "spellbind"
 dynamic = ["version"]
+description = "A library which provides observable values to which other values can be bound"
+readme = "README.md"
+license = {file = "LICENSE"}
 authors = [
     {name = "Georg Plaz", email = "georg.plaz@gmail.com"},
 ]
-description = "A library which provides observable values to which other values can be bound"
-readme = "README.md"
-
 requires-python = ">=3.10"
-license = {file = "LICENSE"}
-
 keywords = [
     "reactive", "programming", "computed", "derived",
     "values", "variables", "data-binding",
@@ -38,20 +36,6 @@ Repository = "https://github.com/FancyNeuron/spellbind"
 Issues = "https://github.com/FancyNeuron/spellbind/issues"
 Documentation = "https://github.com/FancyNeuron/spellbind#readme"
 
-[tool.setuptools.packages.find]
-where = ["src"]
-
-[tool.setuptools.package-data]
-spellbind = ["py.typed"]
-
-[tool.pytest.ini_options]
-minversion = "6.0"
-addopts = "--strict-markers"
-testpaths = ["tests"]
-
-[tool.coverage.run]
-source = ["src"]
-
 [project.optional-dependencies]
 testing = [
     "pytest",
@@ -60,4 +44,19 @@ testing = [
     "mypy",
 ]
 
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+spellbind = ["py.typed"]
+
 [tool.setuptools_scm]
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = "--strict-markers"
+testpaths = ["tests"]
+
+[tool.coverage.run]
+source = ["src"]
