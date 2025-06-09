@@ -1,4 +1,4 @@
-from pybind.int_values import IntConstant
+from spellbind.int_values import IntConstant
 
 
 def test_int_constant_str():

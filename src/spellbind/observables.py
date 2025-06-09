@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from typing import TypeVar, Callable, Generic, Protocol
 from weakref import WeakMethod, ref
 
-from pybind.functions import count_positional_parameters
+from spellbind.functions import count_positional_parameters
 
 _SC = TypeVar("_SC", contravariant=True)
 _TC = TypeVar("_TC", contravariant=True)

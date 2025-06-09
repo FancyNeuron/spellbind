@@ -1,7 +1,7 @@
 import pytest
 
 from conftest import NoParametersObserver, OneParameterObserver, OneDefaultParameterObserver
-from pybind.event import Event
+from spellbind.event import Event
 
 
 def test_event_initialization_empty_subscriptions():

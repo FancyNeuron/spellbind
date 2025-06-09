@@ -1,25 +1,25 @@
-# pybind
+# spellbind
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
-[![Tests](https://github.com/FancyNeuron/pybind/actions/workflows/python-package.yml/badge.svg)](https://github.com/FancyNeuron/pybind/actions/workflows/python-package.yml)
+[![Tests](https://github.com/FancyNeuron/spellbind/actions/workflows/python-package.yml/badge.svg)](https://github.com/FancyNeuron/spellbind/actions/workflows/python-package.yml)
 
 > Reactive programming for Python with reactive variables and events.
 
-pybind is a reactive programming library that lets you create Variables that automatically update when their dependencies change, plus an event system for notifying observers.
+spellbind is a reactive programming library that lets you create Variables that automatically update when their dependencies change, plus an event system for notifying observers.
 
 ## Installation
 
 ```bash
-git clone https://github.com/FancyNeuron/pybind.git
-cd pybind
+git clone https://github.com/FancyNeuron/spellbind.git
+cd spellbind
 pip install -e .
 ```
 
 ## Quick Start
 
 ```python
-from pybind.int_values import IntVariable
-from pybind.str_values import StrVariable
+from spellbind.int_values import IntVariable
+from spellbind.str_values import StrVariable
 
 # Create reactive variables
 name = StrVariable("Alice")
@@ -41,14 +41,14 @@ print(greeting)  # "Bob is 30 years old"
 
 ### Values, Variables and Events
 
-The foundation of pybind consists of three key components:
+The foundation of spellbind consists of three key components:
 
 **Values** are read-only reactive data that can be observed for changes. **Variables** are mutable Values that can be changed and bound to other Values. **Events** provide a way to notify observers when something happens.
 
 ```python
-from pybind.values import Constant
-from pybind.int_values import IntVariable
-from pybind.event import Event
+from spellbind.values import Constant
+from spellbind.int_values import IntVariable
+from spellbind.event import Event
 
 # Variables can be changed
 counter = IntVariable(0)
@@ -68,7 +68,7 @@ button_clicked()  # Prints: "Clicked!"
 Variables can be **bound** to other Values, making them automatically update:
 
 ```python
-from pybind.int_values import IntVariable
+from spellbind.int_values import IntVariable
 
 # Create computed values
 base = IntVariable(10)
@@ -96,7 +96,7 @@ my_variable.unbind()
 Control memory management with binding strength:
 
 ```python
-from pybind.str_values import StrVariable
+from spellbind.str_values import StrVariable
 
 source = StrVariable("hello")
 target = StrVariable("")
@@ -110,10 +110,10 @@ target.bind_to(source, bind_weakly=True)
 
 ### Circular Dependency Detection
 
-pybind automatically prevents circular dependencies:
+spellbind automatically prevents circular dependencies:
 
 ```python
-from pybind.int_values import IntVariable
+from spellbind.int_values import IntVariable
 
 a = IntVariable(1)
 b = IntVariable(2)
@@ -127,10 +127,12 @@ a.bind_to(b)
 React to value changes with observers:
 
 ```python
-from pybind.int_values import IntVariable
+from spellbind.int_values import IntVariable
+
 
 def on_value_change(new_value):
     print(f"Value changed to: {new_value}")
+
 
 my_var = IntVariable(42)
 my_var.observe(on_value_change)
@@ -140,19 +142,21 @@ my_var.value = 100  # Prints: "Value changed to: 100"
 
 ## Event System
 
-pybind includes an event system for notifying observers when things happen.
+spellbind includes an event system for notifying observers when things happen.
 
 ### Basic Events
 
 ```python
-from pybind.event import Event
+from spellbind.event import Event
 
 # Create an event
 button_clicked = Event()
 
+
 # Add observers
 def handle_click():
     print("Button was clicked!")
+
 
 button_clicked.observe(handle_click)
 
@@ -165,12 +169,14 @@ button_clicked()  # Prints: "Button was clicked!"
 Events that pass data to observers:
 
 ```python
-from pybind.event import ValueEvent
+from spellbind.event import ValueEvent
 
 user_logged_in = ValueEvent[str]()
 
+
 def welcome_user(username: str):
     print(f"Welcome, {username}!")
+
 
 user_logged_in.observe(welcome_user)
 user_logged_in("Alice")  # Prints: "Welcome, Alice!"
@@ -181,7 +187,7 @@ user_logged_in("Alice")  # Prints: "Welcome, Alice!"
 Events with multiple parameters:
 
 ```python
-from pybind.event import BiEvent, TriEvent
+from spellbind.event import BiEvent, TriEvent
 
 # Two parameters
 position_changed = BiEvent[int, int]()
@@ -199,12 +205,14 @@ rgb_changed(255, 128, 0)  # Prints: "Color: rgb(255, 128, 0)"
 Prevent memory leaks with weak observers:
 
 ```python
-from pybind.event import Event
+from spellbind.event import Event
 
 event = Event()
 
+
 def temporary_handler():
     print("Handling event")
+
 
 # Weak observation - handler can be garbage collected
 event.weak_observe(temporary_handler)
@@ -215,7 +223,8 @@ event.weak_observe(temporary_handler)
 Here's a practical example showing how to create automatically positioned windows:
 
 ```python
-from pybind.int_values import IntVariable
+from spellbind.int_values import IntVariable
+
 
 class Window:
     def __init__(self, x: int, y: int, width: int, height: int):
@@ -223,9 +232,10 @@ class Window:
         self.y = IntVariable(y)
         self.width = IntVariable(width)
         self.height = IntVariable(height)
-    
+
     def __repr__(self):
         return f"Window(x={self.x.value}, y={self.y.value}, width={self.width.value}, height={self.height.value})"
+
 
 # Create two windows
 main_window = Window(100, 50, 800, 600)
@@ -236,19 +246,19 @@ margin = IntVariable(10)
 sidebar_window.x.bind_to(main_window.x + main_window.width + margin)
 sidebar_window.y.bind_to(main_window.y)
 
-print(main_window)    # Window(x=100, y=50, width=800, height=600)
-print(sidebar_window) # Window(x=910, y=50, width=200, height=400)
+print(main_window)  # Window(x=100, y=50, width=800, height=600)
+print(sidebar_window)  # Window(x=910, y=50, width=200, height=400)
 
 # Moving the main window automatically repositions the sidebar
 main_window.x.value = 200
 main_window.y.value = 100
 
-print(main_window)    # Window(x=200, y=100, width=800, height=600)
-print(sidebar_window) # Window(x=1010, y=100, width=200, height=400)
+print(main_window)  # Window(x=200, y=100, width=800, height=600)
+print(sidebar_window)  # Window(x=1010, y=100, width=200, height=400)
 
 # Changing margin updates sidebar position
 margin.value = 20
-print(sidebar_window) # Window(x=1020, y=100, width=200, height=400)
+print(sidebar_window)  # Window(x=1020, y=100, width=200, height=400)
 ```
 
 ## API Reference

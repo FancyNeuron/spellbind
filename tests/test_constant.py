@@ -1,5 +1,5 @@
 import pytest
-from pybind.values import Constant
+from spellbind.values import Constant
 from conftest import OneParameterObserver
 
 

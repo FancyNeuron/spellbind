@@ -1,4 +1,4 @@
-from pybind.bool_values import BoolConstant
+from spellbind.bool_values import BoolConstant
 
 
 def test_bool_constant_str():

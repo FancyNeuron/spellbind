@@ -1,5 +1,5 @@
 import pytest
-from pybind.event import TriEvent
+from spellbind.event import TriEvent
 from conftest import NoParametersObserver, OneParameterObserver, OneDefaultParameterObserver, \
     OneRequiredOneDefaultParameterObserver, TwoParametersObserver, TwoDefaultParametersObserver, \
     ThreeParametersObserver, ThreeDefaultParametersObserver, TwoRequiredOneDefaultParameterObserver

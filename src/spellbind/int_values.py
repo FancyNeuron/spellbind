@@ -4,10 +4,10 @@ import operator
 from abc import ABC
 from typing import overload
 
-from pybind.float_values import FloatValue, MultiplyFloatValues, DivideValues, SubtractFloatValues, \
+from spellbind.float_values import FloatValue, MultiplyFloatValues, DivideValues, SubtractFloatValues, \
     AddFloatValues, CompareNumbersValues
-from pybind.values import Value, CombinedMixedValues, SimpleVariable, CombinedTwoValues, DerivedValue, Constant
-from pybind.bool_values import BoolValue
+from spellbind.values import Value, CombinedMixedValues, SimpleVariable, CombinedTwoValues, DerivedValue, Constant
+from spellbind.bool_values import BoolValue
 
 IntLike = int | Value[int]
 FloatLike = IntLike | float | FloatValue

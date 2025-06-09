@@ -1,6 +1,6 @@
 # Float Comparison Tests - Less Than
-from pybind.float_values import FloatVariable
-from pybind.int_values import IntVariable
+from spellbind.float_values import FloatVariable
+from spellbind.int_values import IntVariable
 
 
 def test_less_than_float_values():

@@ -3,7 +3,7 @@ import gc
 import pytest
 
 from conftest import NoParametersObserver, OneParameterObserver
-from pybind.event import Event
+from spellbind.event import Event
 
 
 def test_event_weak_observe_mock_observer_adds_subscription():

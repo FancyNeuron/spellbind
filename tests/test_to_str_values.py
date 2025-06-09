@@ -1,4 +1,4 @@
-from pybind.values import SimpleVariable
+from spellbind.values import SimpleVariable
 
 
 def test_to_str_of_int_42():
