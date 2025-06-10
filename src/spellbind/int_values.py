@@ -148,6 +148,16 @@ class IntVariable(SimpleVariable[int], IntValue):
     pass
 
 
+class MaxIntValues(CombinedMixedValues[int, int], IntValue):
+    def transform(self, *values: int) -> int:
+        return max(values)
+
+
+class MinIntValues(CombinedMixedValues[int, int], IntValue):
+    def transform(self, *values: int) -> int:
+        return min(values)
+
+
 class AddIntValues(CombinedMixedValues[int, int], IntValue):
     def transform(self, *values: int) -> int:
         return sum(values)
