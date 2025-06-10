@@ -99,6 +99,15 @@ class FloatValue(Value[float], ABC):
         return self
 
 
+class MappedFloatValue(Generic[_S], DerivedValue[_S, float], FloatValue):
+    def __init__(self, value: Value[_S], transform: Callable[[_S], float]) -> None:
+        self._transform = transform
+        super().__init__(value)
+
+    def transform(self, value: _S) -> float:
+        return self._transform(value)
+
+
 class FloatConstant(FloatValue, Constant[float]):
     pass
 

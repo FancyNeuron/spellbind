@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 from abc import ABC
-from typing import Any
+from typing import Any, Generic, Callable, TypeVar
 
 from spellbind.values import Value, DerivedValue, CombinedMixedValues, SimpleVariable, Constant
 
 StringLike = str | Value[str]
+
+_S = TypeVar('_S')
 
 
 class StrValue(Value[str], ABC):
@@ -14,6 +16,15 @@ class StrValue(Value[str], ABC):
 
     def __radd__(self, other: StringLike) -> StrValue:
         return ConcatenateStrValues(other, self)
+
+
+class MappedStrValue(Generic[_S], DerivedValue[_S, str], StrValue):
+    def __init__(self, value: Value[_S], transform: Callable[[_S], str]) -> None:
+        self._transform = transform
+        super().__init__(value)
+
+    def transform(self, value: _S) -> str:
+        return self._transform(value)
 
 
 class StrConstant(StrValue, Constant[str]):
