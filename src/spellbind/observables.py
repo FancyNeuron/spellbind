@@ -113,11 +113,11 @@ class Observable(ABC):
 
 class ValueObservable(Generic[_S], ABC):
     @abstractmethod
-    def observe(self, observer: Observer | ValueObserver[_S]) -> None:
+    def observe(self, observer: Observer | ValueObserver[_S], times: int | None = None) -> None:
         raise NotImplementedError
 
     @abstractmethod
-    def weak_observe(self, observer: Observer | ValueObserver[_S]) -> None:
+    def weak_observe(self, observer: Observer | ValueObserver[_S], times: int | None = None) -> None:
         raise NotImplementedError
 
     @abstractmethod
@@ -127,11 +127,13 @@ class ValueObservable(Generic[_S], ABC):
 
 class BiObservable(Generic[_S, _T], ABC):
     @abstractmethod
-    def observe(self, observer: Observer | ValueObserver[_S] | BiObserver[_S, _T]) -> None:
+    def observe(self, observer: Observer | ValueObserver[_S] | BiObserver[_S, _T],
+                times: int | None = None) -> None:
         raise NotImplementedError
 
     @abstractmethod
-    def weak_observe(self, observer: Observer | ValueObserver[_S] | BiObserver[_S, _T]) -> None:
+    def weak_observe(self, observer: Observer | ValueObserver[_S] | BiObserver[_S, _T],
+                     times: int | None = None) -> None:
         raise NotImplementedError
 
     @abstractmethod
@@ -141,11 +143,13 @@ class BiObservable(Generic[_S, _T], ABC):
 
 class TriObservable(Generic[_S, _T, _U], ABC):
     @abstractmethod
-    def observe(self, observer: Observer | ValueObserver[_S] | BiObserver[_S, _T] | TriObserver[_S, _T, _U]) -> None:
+    def observe(self, observer: Observer | ValueObserver[_S] | BiObserver[_S, _T] | TriObserver[_S, _T, _U],
+                times: int | None = None) -> None:
         raise NotImplementedError
 
     @abstractmethod
-    def weak_observe(self, observer: Observer | ValueObserver[_S] | BiObserver[_S, _T] | TriObserver[_S, _T, _U]) -> None:
+    def weak_observe(self, observer: Observer | ValueObserver[_S] | BiObserver[_S, _T] | TriObserver[_S, _T, _U],
+                     times: int | None = None) -> None:
         raise NotImplementedError
 
     @abstractmethod

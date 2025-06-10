@@ -188,3 +188,39 @@ def test_event_call_mixed_weak_strong_lambda_observers_in_order():
     event()
 
     assert calls == ["test 0", "test 1", "test 2", "test 3"]
+
+
+def test_event_weak_observe_mock_observer_times_parameter_limits_calls():
+    event = Event()
+    mock_observer = NoParametersObserver()
+
+    event.weak_observe(mock_observer, times=2)
+
+    event()
+    event()
+    event()
+
+    assert mock_observer.call_count == 2
+
+
+def test_event_weak_observe_mock_observer_times_parameter_removes_subscription_after_limit():
+    event = Event()
+    mock_observer = NoParametersObserver()
+
+    event.weak_observe(mock_observer, times=1)
+    event()
+
+    assert not event.is_observed(mock_observer)
+
+
+def test_event_weak_observe_mock_observer_times_none_unlimited_calls():
+    event = Event()
+    mock_observer = NoParametersObserver()
+
+    event.weak_observe(mock_observer, times=None)
+
+    for _ in range(10):
+        event()
+
+    assert mock_observer.call_count == 10
+    assert event.is_observed(mock_observer)

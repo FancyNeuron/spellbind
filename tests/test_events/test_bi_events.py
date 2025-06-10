@@ -211,3 +211,39 @@ def test_bi_event_call_mock_observer_with_none_values():
     event(None, None)
 
     observer.assert_called_once_with(None, None)
+
+
+def test_bi_event_observe_mock_observer_times_parameter_limits_calls():
+    event = BiEvent[str, int]()
+    mock_observer = TwoParametersObserver()
+
+    event.observe(mock_observer, times=2)
+
+    event("test", 42)
+    event("test", 42)
+    event("test", 42)
+
+    assert mock_observer.call_count == 2
+
+
+def test_bi_event_observe_mock_observer_times_parameter_removes_subscription_after_limit():
+    event = BiEvent[str, int]()
+    mock_observer = TwoParametersObserver()
+
+    event.observe(mock_observer, times=1)
+    event("test", 42)
+
+    assert not event.is_observed(mock_observer)
+
+
+def test_bi_event_observe_mock_observer_times_none_unlimited_calls():
+    event = BiEvent[str, int]()
+    mock_observer = TwoParametersObserver()
+
+    event.observe(mock_observer, times=None)
+
+    for _ in range(10):
+        event("test", 42)
+
+    assert mock_observer.call_count == 10
+    assert event.is_observed(mock_observer)

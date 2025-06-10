@@ -26,14 +26,6 @@ class Value(ValueObservable[_S], Generic[_S], ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def observe(self, observer: Observer | ValueObserver[_S]) -> None:
-        raise NotImplementedError
-
-    @abstractmethod
-    def unobserve(self, observer: Observer | ValueObserver[_S]) -> None:
-        raise NotImplementedError
-
-    @abstractmethod
     def derived_from(self) -> frozenset[Value]:
         raise NotImplementedError
 
@@ -135,11 +127,11 @@ class SimpleVariable(Variable[_S], Generic[_S]):
     def _receive_bound_value(self, value: _S) -> None:
         self._set_value_bypass_bound_check(value)
 
-    def observe(self, observer: Observer | ValueObserver[_S]) -> None:
-        self._on_change.observe(observer)
+    def observe(self, observer: Observer | ValueObserver[_S], times: int | None = None) -> None:
+        self._on_change.observe(observer, times)
 
-    def weak_observe(self, observer: Observer | ValueObserver[_S]) -> None:
-        self._on_change.weak_observe(observer)
+    def weak_observe(self, observer: Observer | ValueObserver[_S], times: int | None = None) -> None:
+        self._on_change.weak_observe(observer, times)
 
     def unobserve(self, observer: Observer | ValueObserver[_S]) -> None:
         self._on_change.unobserve(observer)
@@ -188,10 +180,10 @@ class Constant(Value[_S], Generic[_S]):
     def value(self) -> _S:
         return self._value
 
-    def observe(self, observer: Observer | ValueObserver[_S]) -> None:
+    def observe(self, observer: Observer | ValueObserver[_S], times: int | None = None) -> None:
         pass
 
-    def weak_observe(self, observer: Observer | ValueObserver[_S]) -> None:
+    def weak_observe(self, observer: Observer | ValueObserver[_S], times: int | None = None) -> None:
         pass
 
     def unobserve(self, observer: Observer | ValueObserver[_S]) -> None:
@@ -209,11 +201,11 @@ class DerivedValueBase(Value[_T], Generic[_T], ABC):
     def derived_from(self) -> frozenset[Value]:
         return self._values
 
-    def observe(self, observer: Observer | ValueObserver[_T]) -> None:
-        self._on_change.observe(observer)
+    def observe(self, observer: Observer | ValueObserver[_T], times: int | None = None) -> None:
+        self._on_change.observe(observer, times)
 
-    def weak_observe(self, observer: Observer | ValueObserver[_T]) -> None:
-        self._on_change.weak_observe(observer)
+    def weak_observe(self, observer: Observer | ValueObserver[_T], times: int | None = None) -> None:
+        self._on_change.weak_observe(observer, times)
 
     def unobserve(self, observer: Observer | ValueObserver[_T]) -> None:
         self._on_change.unobserve(observer)
@@ -269,7 +261,6 @@ class CombinedTwoValues(DerivedValueBase[_U], Generic[_S, _T, _U], ABC):
         if isinstance(right, Value):
             right.observe(self._on_right_change)
         self._value = self.transform(self._left_getter(), self._right_getter())
-        self._on_change = ValueEvent()
 
     def _on_left_change(self, new_left_value: _S) -> None:
         new_value = self.transform(new_left_value, self._right_getter())
@@ -292,12 +283,6 @@ class CombinedTwoValues(DerivedValueBase[_U], Generic[_S, _T, _U], ABC):
     def value(self) -> _U:
         return self._value
 
-    def observe(self, observer: Observer | ValueObserver[_U]) -> None:
-        self._on_change.observe(observer)
-
-    def unobserve(self, observer: Observer | ValueObserver[_U]) -> None:
-        self._on_change.unobserve(observer)
-
 
 def _get_value(value: Value[_S] | _S) -> _S:
     if isinstance(value, Value):
@@ -314,7 +299,6 @@ class CombinedMixedValues(DerivedValueBase[_T], Generic[_S, _T], ABC):
             if isinstance(v, Value):
                 v.observe(self._create_on_n_changed(i))
         self._value = self._calculate_value()
-        self._on_change: ValueEvent[_T] = ValueEvent()
 
     def _create_on_n_changed(self, index: int) -> Callable[[_S], None]:
         def on_change(new_value: _S) -> None:
@@ -337,9 +321,3 @@ class CombinedMixedValues(DerivedValueBase[_T], Generic[_S, _T], ABC):
     @property
     def value(self) -> _T:
         return self._value
-
-    def observe(self, observer: Observer | ValueObserver[_T]) -> None:
-        self._on_change.observe(observer)
-
-    def unobserve(self, observer: Observer | ValueObserver[_T]) -> None:
-        self._on_change.unobserve(observer)
