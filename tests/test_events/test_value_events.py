@@ -179,3 +179,39 @@ def test_value_event_call_with_two_parameters_fails():
 
     with pytest.raises(TypeError):
         event("param0", "param1")
+
+
+def test_value_event_observe_mock_observer_times_parameter_limits_calls():
+    event = ValueEvent[str]()
+    mock_observer = OneParameterObserver()
+
+    event.observe(mock_observer, times=2)
+
+    event("test")
+    event("test")
+    event("test")
+
+    assert mock_observer.call_count == 2
+
+
+def test_value_event_observe_mock_observer_times_parameter_removes_subscription_after_limit():
+    event = ValueEvent[str]()
+    mock_observer = OneParameterObserver()
+
+    event.observe(mock_observer, times=1)
+    event("test")
+
+    assert not event.is_observed(mock_observer)
+
+
+def test_value_event_observe_mock_observer_times_none_unlimited_calls():
+    event = ValueEvent[str]()
+    mock_observer = OneParameterObserver()
+
+    event.observe(mock_observer, times=None)
+
+    for _ in range(10):
+        event("test")
+
+    assert mock_observer.call_count == 10
+    assert event.is_observed(mock_observer)

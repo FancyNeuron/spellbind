@@ -279,3 +279,39 @@ def test_value_event_weak_observe_multiple_mock_observers_different_parameters()
     observer0.assert_called_once_with()
     observer1.assert_called_once_with("hello")
     observer2.assert_called_once_with("hello")
+
+
+def test_value_event_weak_observe_mock_observer_times_parameter_limits_calls():
+    event = ValueEvent[str]()
+    mock_observer = OneParameterObserver()
+
+    event.weak_observe(mock_observer, times=2)
+
+    event("test")
+    event("test")
+    event("test")
+
+    assert mock_observer.call_count == 2
+
+
+def test_value_event_weak_observe_mock_observer_times_parameter_removes_subscription_after_limit():
+    event = ValueEvent[str]()
+    mock_observer = OneParameterObserver()
+
+    event.weak_observe(mock_observer, times=1)
+    event("test")
+
+    assert not event.is_observed(mock_observer)
+
+
+def test_value_event_weak_observe_mock_observer_times_none_unlimited_calls():
+    event = ValueEvent[str]()
+    mock_observer = OneParameterObserver()
+
+    event.weak_observe(mock_observer, times=None)
+
+    for _ in range(10):
+        event("test")
+
+    assert mock_observer.call_count == 10
+    assert event.is_observed(mock_observer)

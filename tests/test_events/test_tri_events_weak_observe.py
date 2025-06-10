@@ -386,3 +386,39 @@ def test_tri_event_weak_observe_multiple_mock_observers_different_parameters():
     observer2.assert_called_once_with("hello", 123)
     observer3.assert_called_once_with("hello", 123, False)
     observer4.assert_called_once_with("hello", 123, False)
+
+
+def test_tri_event_weak_observe_mock_observer_times_parameter_limits_calls():
+    event = TriEvent[str, int, bool]()
+    mock_observer = ThreeParametersObserver()
+
+    event.weak_observe(mock_observer, times=2)
+
+    event("test", 42, True)
+    event("test", 42, True)
+    event("test", 42, True)
+
+    assert mock_observer.call_count == 2
+
+
+def test_tri_event_weak_observe_mock_observer_times_parameter_removes_subscription_after_limit():
+    event = TriEvent[str, int, bool]()
+    mock_observer = ThreeParametersObserver()
+
+    event.weak_observe(mock_observer, times=1)
+    event("test", 42, True)
+
+    assert not event.is_observed(mock_observer)
+
+
+def test_tri_event_weak_observe_mock_observer_times_none_unlimited_calls():
+    event = TriEvent[str, int, bool]()
+    mock_observer = ThreeParametersObserver()
+
+    event.weak_observe(mock_observer, times=None)
+
+    for _ in range(10):
+        event("test", 42, True)
+
+    assert mock_observer.call_count == 10
+    assert event.is_observed(mock_observer)
