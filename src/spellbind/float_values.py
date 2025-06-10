@@ -1,10 +1,10 @@
 from __future__ import annotations
-from typing_extensions import Self
 
 import operator
 from abc import ABC, abstractmethod
 from typing import Generic, Callable, Sequence, TypeVar, overload
 
+from typing_extensions import Self
 from typing_extensions import TYPE_CHECKING
 
 from spellbind.bool_values import BoolValue
@@ -112,6 +112,10 @@ class FloatConstant(FloatValue, Constant[float]):
     pass
 
 
+class FloatVariable(SimpleVariable[float], FloatValue):
+    pass
+
+
 def _create_float_getter(value: float | Value[int] | Value[float]) -> Callable[[], float]:
     if isinstance(value, Value):
         return lambda: value.value
@@ -158,6 +162,16 @@ class CombinedFloatValues(DerivedValueBase[_U], Generic[_U], ABC):
         return self._value
 
 
+class MaxFloatValues(CombinedFloatValues[float], FloatValue):
+    def transform(self, values: Sequence[float]) -> float:
+        return max(values)
+
+
+class MinFloatValues(CombinedFloatValues[float], FloatValue):
+    def transform(self, values: Sequence[float]) -> float:
+        return min(values)
+
+
 class CombinedTwoFloatValues(CombinedFloatValues[_U], Generic[_U], ABC):
     def __init__(self, left: FloatLike, right: FloatLike):
         super().__init__(left, right)
@@ -171,9 +185,6 @@ class CombinedTwoFloatValues(CombinedFloatValues[_U], Generic[_U], ABC):
 
 
 class AddFloatValues(CombinedFloatValues[float], FloatValue):
-    def __init__(self, *values: FloatLike):
-        super().__init__(*values)
-
     def transform(self, values: Sequence[float]) -> float:
         return sum(values)
 
@@ -184,9 +195,6 @@ class SubtractFloatValues(CombinedTwoFloatValues[float], FloatValue):
 
 
 class MultiplyFloatValues(CombinedFloatValues[float], FloatValue):
-    def __init__(self, *values: FloatLike):
-        super().__init__(*values)
-
     def transform(self, values: Sequence[float]) -> float:
         result = 1.0
         for value in values:
@@ -197,10 +205,6 @@ class MultiplyFloatValues(CombinedFloatValues[float], FloatValue):
 class DivideValues(CombinedTwoFloatValues[float], FloatValue):
     def transform_two(self, left: float, right: float) -> float:
         return left / right
-
-
-class FloatVariable(SimpleVariable[float], FloatValue):
-    pass
 
 
 class RoundFloatValue(CombinedTwoValues[float, int, float], FloatValue):

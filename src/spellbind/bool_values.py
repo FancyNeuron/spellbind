@@ -3,7 +3,7 @@ from __future__ import annotations
 from abc import ABC
 from typing import TypeVar, Generic, Callable
 
-from spellbind.values import Value, DerivedValue, Constant
+from spellbind.values import Value, DerivedValue, Constant, SimpleVariable
 
 _S = TypeVar('_S')
 
@@ -31,6 +31,10 @@ class NotBoolValue(DerivedValue[bool, bool], BoolValue):
 
 
 class BoolConstant(BoolValue, Constant[bool]):
+    pass
+
+
+class BoolVariable(SimpleVariable[bool], BoolValue):
     pass
 
 
