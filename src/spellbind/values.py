@@ -8,6 +8,8 @@ from spellbind.observables import ValueObservable, Observer, ValueObserver
 
 if TYPE_CHECKING:
     from spellbind.str_values import StrValue
+    from spellbind.int_values import IntValue
+    from spellbind.bool_values import BoolValue
 
 
 EMPTY_FROZEN_SET: frozenset = frozenset()
@@ -63,6 +65,25 @@ class Value(ValueObservable[_S], Generic[_S], ABC):
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}({self.value!r})"
+
+    def map(self, transformer: Callable[[_S], _T]) -> Value[_T]:
+        return MappedValue(self, transformer)
+
+    def map_to_int(self, transformer: Callable[[_S], int]) -> IntValue:
+        from spellbind.int_values import MappedIntValue
+        return MappedIntValue(self, transformer)
+
+    def map_to_float(self, transformer: Callable[[_S], float]) -> Value[float]:
+        from spellbind.float_values import MappedFloatValue
+        return MappedFloatValue(self, transformer)
+
+    def map_to_str(self, transformer: Callable[[_S], str]) -> StrValue:
+        from spellbind.str_values import MappedStrValue
+        return MappedStrValue(self, transformer)
+
+    def map_to_bool(self, transformer: Callable[[_S], bool]) -> BoolValue:
+        from spellbind.bool_values import MappedBoolValue
+        return MappedBoolValue(self, transformer)
 
 
 class Variable(Value[_S], Generic[_S], ABC):
@@ -217,6 +238,16 @@ class DerivedValue(DerivedValueBase[_T], Generic[_S, _T], ABC):
     @property
     def value(self) -> _T:
         return self._value
+
+
+class MappedValue(DerivedValue[_S, _T], Generic[_S, _T]):
+    def __init__(self, of: Value[_S], transformer: Callable[[_S], _T]):
+        super().__init__(of)
+        self._transformer = transformer
+        self._of = of
+
+    def transform(self, value: _S) -> _T:
+        return self._transformer(value)
 
 
 def _create_value_getter(value: Value[_S] | _S) -> Callable[[], _S]:

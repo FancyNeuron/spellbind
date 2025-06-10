@@ -1,10 +1,10 @@
 from __future__ import annotations
-from typing_extensions import Self
+from typing_extensions import Self, TypeVar
 
 import math
 import operator
 from abc import ABC
-from typing import overload
+from typing import overload, Generic, Callable
 
 from spellbind.float_values import FloatValue, MultiplyFloatValues, DivideValues, SubtractFloatValues, \
     AddFloatValues, CompareNumbersValues
@@ -13,6 +13,9 @@ from spellbind.bool_values import BoolValue
 
 IntLike = int | Value[int]
 FloatLike = IntLike | float | FloatValue
+
+
+_S = TypeVar('_S')
 
 
 class IntValue(Value[int], ABC):
@@ -126,6 +129,15 @@ class IntValue(Value[int], ABC):
 
     def __pos__(self) -> Self:
         return self
+
+
+class MappedIntValue(Generic[_S], DerivedValue[_S, int], IntValue):
+    def __init__(self, value: Value[_S], transform: Callable[[_S], int]) -> None:
+        self._transform = transform
+        super().__init__(value)
+
+    def transform(self, value: _S) -> int:
+        return self._transform(value)
 
 
 class IntConstant(IntValue, Constant[int]):

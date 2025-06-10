@@ -1,6 +1,11 @@
 import gc
 
 import pytest
+
+from spellbind.bool_values import BoolValue
+from spellbind.float_values import FloatValue
+from spellbind.int_values import IntValue
+from spellbind.str_values import StrValue
 from spellbind.values import SimpleVariable, Constant
 from conftest import NoParametersObserver, OneParameterObserver
 
@@ -408,3 +413,58 @@ def test_simple_bool_variable_str():
 def test_simple_none_variable_str():
     none_bool = SimpleVariable(None)
     assert str(none_bool) == "None"
+
+
+def test_map_float_to_int():
+    value = SimpleVariable(42.5)
+    mapped = value.map_to_int(int)
+
+    assert isinstance(mapped, IntValue)
+    assert mapped.value == 42
+
+    value.value = 100.9
+    assert mapped.value == 100
+
+
+def test_map_int_to_float():
+    value = SimpleVariable(42)
+    mapped = value.map_to_float(float)
+
+    assert isinstance(mapped, FloatValue)
+    assert mapped.value == 42.0
+
+    value.value = 100
+    assert mapped.value == 100.0
+
+
+def test_map_int_to_str():
+    value = SimpleVariable(42)
+    mapped = value.map_to_str(str)
+
+    assert isinstance(mapped, StrValue)
+    assert mapped.value == "42"
+
+    value.value = 100
+    assert mapped.value == "100"
+
+
+def test_map_int_to_bool():
+    value = SimpleVariable(0)
+    mapped = value.map_to_bool(bool)
+
+    assert isinstance(mapped, BoolValue)
+    assert mapped.value is False
+
+    value.value = 1
+    assert mapped.value is True
+
+
+def test_map_str_to_int():
+    value = SimpleVariable("hello")
+    mapped = value.map_to_int(len)
+
+    assert isinstance(mapped, IntValue)
+    assert mapped.value == 5
+
+    value.value = "world!"
+    assert mapped.value == 6
