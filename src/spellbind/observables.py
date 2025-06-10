@@ -31,17 +31,30 @@ class TriObserver(Protocol[_SC, _TC, _UC]):
     def __call__(self, arg1: _SC, arg2: _TC, arg3: _UC, /) -> None: ...
 
 
-class DeadReferenceError(Exception):
+class RemoveSubscriptionError(Exception):
+    pass
+
+
+class CallCountExceededError(RemoveSubscriptionError):
+    pass
+
+
+class DeadReferenceError(RemoveSubscriptionError):
     pass
 
 
 class Subscription(Generic[_O], ABC):
-    def __init__(self, observer: _O):
+    def __init__(self, observer: _O, times: int | None):
         self._positional_parameter_count = count_positional_parameters(observer)
+        self.called_counter = 0
+        self.max_call_count = times
 
     def _call(self, observer: _O, *args) -> None:
+        self.called_counter += 1
         trimmed_args = args[:self._positional_parameter_count]
         observer(*trimmed_args)
+        if self.max_call_count is not None and self.called_counter >= self.max_call_count:
+            raise CallCountExceededError
 
     @abstractmethod
     def __call__(self, *args) -> None:
@@ -53,8 +66,8 @@ class Subscription(Generic[_O], ABC):
 
 
 class StrongSubscription(Subscription[_O], Generic[_O]):
-    def __init__(self, observer: _O):
-        super().__init__(observer)
+    def __init__(self, observer: _O, times: int | None):
+        super().__init__(observer, times)
         self._observer = observer
 
     def __call__(self, *args) -> None:
@@ -67,8 +80,8 @@ class StrongSubscription(Subscription[_O], Generic[_O]):
 class WeakSubscription(Subscription[_O], Generic[_O]):
     _ref: ref[_O] | WeakMethod
 
-    def __init__(self, observer: _O):
-        super().__init__(observer)
+    def __init__(self, observer: _O, times: int | None):
+        super().__init__(observer, times)
         if hasattr(observer, '__self__'):
             self._ref = WeakMethod(observer)
         else:
@@ -86,11 +99,11 @@ class WeakSubscription(Subscription[_O], Generic[_O]):
 
 class Observable(ABC):
     @abstractmethod
-    def observe(self, observer: Observer) -> None:
+    def observe(self, observer: Observer, times: int | None = None) -> None:
         raise NotImplementedError
 
     @abstractmethod
-    def weak_observe(self, observer: Observer) -> None:
+    def weak_observe(self, observer: Observer, times: int | None = None) -> None:
         raise NotImplementedError
 
     @abstractmethod
