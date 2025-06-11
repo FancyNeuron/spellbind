@@ -1,3 +1,5 @@
+import gc
+
 from spellbind.float_values import FloatVariable
 from spellbind.int_values import IntVariable
 
@@ -56,3 +58,29 @@ def test_add_float_plus_int_value():
 
     v1.value = 4
     assert v2.value == 7.5
+
+
+def test_add_int_values_keeps_reference():
+    v0 = IntVariable(1)
+    v1 = IntVariable(2)
+    v2 = v0 + v1
+    assert len(v0._on_change._subscriptions) == 1
+    gc.collect()
+
+    v0.value = 3
+    v1.value = 4
+    assert len(v0._on_change._subscriptions) == 1
+
+
+def test_add_int_values_garbage_collected():
+    v0 = IntVariable(1)
+    v1 = IntVariable(2)
+    v2 = v0 + v1
+    assert len(v0._on_change._subscriptions) == 1
+    assert len(v1._on_change._subscriptions) == 1
+    v2 = None
+    gc.collect()
+    v0.value = 3  # trigger removal of weak references
+    v1.value = 4  # trigger removal of weak references
+    assert len(v0._on_change._subscriptions) == 0
+    assert len(v1._on_change._subscriptions) == 0

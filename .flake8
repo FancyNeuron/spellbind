@@ -9,4 +9,4 @@ exclude =
 
 # Allow assigning lambdas in tests
 per-file-ignores =
-    tests/*:E731
+    tests/*:E731,F841
