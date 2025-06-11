@@ -133,20 +133,22 @@ def _get_float(value: float | Value[int] | Value[float]) -> float:
 class CombinedFloatValues(DerivedValueBase[_U], Generic[_U], ABC):
     def __init__(self, *values: float | Value[int] | Value[float]):
         super().__init__(*[v for v in values if isinstance(v, Value)])
-        self.gotten_values = [_get_float(v) for v in values]
+        self._gotten_values = [_get_float(v) for v in values]
+        self._callbacks: list[Callable] = []
         for i, v in enumerate(values):
             if isinstance(v, Value):
-                v.observe(self._create_on_n_changed(i))
+                v.weak_observe(self._create_on_n_changed(i))
         self._value = self._calculate_value()
 
     def _create_on_n_changed(self, index: int) -> Callable[[float], None]:
         def on_change(new_value: float) -> None:
-            self.gotten_values[index] = new_value
+            self._gotten_values[index] = new_value
             self._on_result_change(self._calculate_value())
+        self._callbacks.append(on_change)  # keep strong reference to callback so it won't be garbage collected
         return on_change
 
     def _calculate_value(self) -> _U:
-        return self.transform(self.gotten_values)
+        return self.transform(self._gotten_values)
 
     def _on_result_change(self, new_value: _U) -> None:
         if new_value != self._value:

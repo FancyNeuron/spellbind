@@ -215,7 +215,7 @@ class DerivedValue(DerivedValueBase[_T], Generic[_S, _T], ABC):
     def __init__(self, of: Value[_S]):
         super().__init__(of)
         self._value = self.transform(of.value)
-        of.observe(self._on_source_change)
+        of.weak_observe(self._on_source_change)
 
     @abstractmethod
     def transform(self, value: _S) -> _T:
@@ -257,9 +257,9 @@ class CombinedTwoValues(DerivedValueBase[_U], Generic[_S, _T, _U], ABC):
         self._left_getter = _create_value_getter(left)
         self._right_getter = _create_value_getter(right)
         if isinstance(left, Value):
-            left.observe(self._on_left_change)
+            left.weak_observe(self._on_left_change)
         if isinstance(right, Value):
-            right.observe(self._on_right_change)
+            right.weak_observe(self._on_right_change)
         self._value = self.transform(self._left_getter(), self._right_getter())
 
     def _on_left_change(self, new_left_value: _S) -> None:
@@ -295,15 +295,17 @@ class CombinedMixedValues(DerivedValueBase[_T], Generic[_S, _T], ABC):
     def __init__(self, *sources: Value[_S] | _S):
         super().__init__(*[v for v in sources if isinstance(v, Value)])
         self.gotten_values = [_get_value(v) for v in sources]
+        self._callbacks: list[Callable] = []
         for i, v in enumerate(sources):
             if isinstance(v, Value):
-                v.observe(self._create_on_n_changed(i))
+                v.weak_observe(self._create_on_n_changed(i))
         self._value = self._calculate_value()
 
     def _create_on_n_changed(self, index: int) -> Callable[[_S], None]:
         def on_change(new_value: _S) -> None:
             self.gotten_values[index] = new_value
             self._on_result_change(self._calculate_value())
+        self._callbacks.append(on_change)  # keep strong reference to callback so it won't be garbage collected
         return on_change
 
     def _calculate_value(self) -> _T:
