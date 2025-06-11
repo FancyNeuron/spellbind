@@ -111,7 +111,7 @@ class Observable(ABC):
         raise NotImplementedError
 
 
-class ValueObservable(Generic[_S], ABC):
+class ValueObservable(Observable, Generic[_S], ABC):
     @abstractmethod
     def observe(self, observer: Observer | ValueObserver[_S], times: int | None = None) -> None:
         raise NotImplementedError
@@ -125,7 +125,7 @@ class ValueObservable(Generic[_S], ABC):
         raise NotImplementedError
 
 
-class BiObservable(Generic[_S, _T], ABC):
+class BiObservable(ValueObservable[_S], Generic[_S, _T], ABC):
     @abstractmethod
     def observe(self, observer: Observer | ValueObserver[_S] | BiObserver[_S, _T],
                 times: int | None = None) -> None:
@@ -141,7 +141,7 @@ class BiObservable(Generic[_S, _T], ABC):
         raise NotImplementedError
 
 
-class TriObservable(Generic[_S, _T, _U], ABC):
+class TriObservable(BiObservable[_S, _T], Generic[_S, _T, _U], ABC):
     @abstractmethod
     def observe(self, observer: Observer | ValueObserver[_S] | BiObserver[_S, _T] | TriObserver[_S, _T, _U],
                 times: int | None = None) -> None:
