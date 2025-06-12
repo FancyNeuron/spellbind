@@ -7,9 +7,9 @@ from spellbind.event import ValueEvent
 from spellbind.observables import ValueObservable, Observer, ValueObserver
 
 if TYPE_CHECKING:
-    from spellbind.str_values import StrValue
-    from spellbind.int_values import IntValue
-    from spellbind.bool_values import BoolValue
+    from spellbind.str_values import StrValue  # pragma: no cover
+    from spellbind.int_values import IntValue  # pragma: no cover
+    from spellbind.bool_values import BoolValue  # pragma: no cover
 
 
 EMPTY_FROZEN_SET: frozenset = frozenset()
@@ -227,9 +227,9 @@ class DerivedValue(DerivedValueBase[_T], Generic[_S, _T], ABC):
 
 class MappedValue(DerivedValue[_S, _T], Generic[_S, _T]):
     def __init__(self, of: Value[_S], transformer: Callable[[_S], _T]):
-        super().__init__(of)
         self._transformer = transformer
         self._of = of
+        super().__init__(of)
 
     def transform(self, value: _S) -> _T:
         return self._transformer(value)

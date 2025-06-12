@@ -28,6 +28,6 @@ def assert_parameter_max_count(callable_: Callable, max_count: int) -> None:
         elif hasattr(callable_, '__class__'):
             callable_name = callable_.__class__.__name__
         else:
-            callable_name = str(callable_)
+            callable_name = str(callable_)  # pragma: no cover
         raise ValueError(f"Callable {callable_name} has too many non-default parameters: "
                          f"{count_non_default_parameters(callable_)} > {max_count}")

@@ -11,7 +11,7 @@ from spellbind.bool_values import BoolValue
 from spellbind.values import Value, SimpleVariable, DerivedValue, DerivedValueBase, Constant, CombinedTwoValues
 
 if TYPE_CHECKING:
-    from spellbind.int_values import IntValue, IntLike
+    from spellbind.int_values import IntValue, IntLike  # pragma: no cover
 
 FloatLike = Value[int] | float | Value[float]
 
@@ -117,13 +117,6 @@ class FloatConstant(FloatValue, Constant[float]):
 
 class FloatVariable(SimpleVariable[float], FloatValue):
     pass
-
-
-def _create_float_getter(value: float | Value[int] | Value[float]) -> Callable[[], float]:
-    if isinstance(value, Value):
-        return lambda: value.value
-    else:
-        return lambda: value
 
 
 def _get_float(value: float | Value[int] | Value[float]) -> float:

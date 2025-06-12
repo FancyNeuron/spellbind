@@ -17,6 +17,9 @@ class StrValue(Value[str], ABC):
     def __radd__(self, other: StringLike) -> StrValue:
         return ConcatenateStrValues(other, self)
 
+    def to_str(self) -> StrValue:
+        return self
+
 
 class MappedStrValue(Generic[_S], DerivedValue[_S, str], StrValue):
     def __init__(self, value: Value[_S], transform: Callable[[_S], str]) -> None:
@@ -38,9 +41,6 @@ class StrVariable(SimpleVariable[str], StrValue):
 class ToStrValue(DerivedValue[Any, str], StrValue):
     def transform(self, value: Any) -> str:
         return str(value)
-
-    def to_str(self) -> StrValue:
-        return self
 
 
 class ConcatenateStrValues(CombinedMixedValues[str, str], StrValue):
