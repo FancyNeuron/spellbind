@@ -1,15 +1,17 @@
 from __future__ import annotations
-from typing_extensions import Self, TypeVar
 
 import math
 import operator
 from abc import ABC
 from typing import overload, Generic, Callable
 
+from typing_extensions import Self, TypeVar
+
+from spellbind.bool_values import BoolValue
 from spellbind.float_values import FloatValue, MultiplyFloatValues, DivideValues, SubtractFloatValues, \
     AddFloatValues, CompareNumbersValues
-from spellbind.values import Value, CombinedMixedValues, SimpleVariable, CombinedTwoValues, DerivedValue, Constant
-from spellbind.bool_values import BoolValue
+from spellbind.values import Value, CombinedMixedValues, SimpleVariable, CombinedTwoValues, DerivedValue, Constant, \
+    CombinedThreeValues
 
 IntLike = int | Value[int]
 FloatLike = IntLike | float | FloatValue
@@ -130,6 +132,9 @@ class IntValue(Value[int], ABC):
     def __pos__(self) -> Self:
         return self
 
+    def clamp(self, min_value: IntLike, max_value: IntLike) -> IntValue:
+        return ClampIntValue(self, min_value, max_value)
+
 
 class MappedIntValue(Generic[_S], DerivedValue[_S, int], IntValue):
     def __init__(self, value: Value[_S], transform: Callable[[_S], int]) -> None:
@@ -219,3 +224,11 @@ class CeilFloatValue(DerivedValue[float, int], IntValue):
 class RoundFloatToIntValue(DerivedValue[float, int], IntValue):
     def transform(self, value: float) -> int:
         return round(value)
+
+
+class ClampIntValue(CombinedThreeValues[int, int], IntValue):
+    def __init__(self, value: IntLike, min_value: IntLike, max_value: IntLike) -> None:
+        super().__init__(value, min_value, max_value)
+
+    def transform_three(self, value: int, min_value: int, max_value: int) -> int:
+        return max(min_value, min(max_value, value))
