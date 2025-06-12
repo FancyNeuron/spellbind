@@ -104,6 +104,14 @@ def test_event_observe_lambda_observer():
     assert calls == [True]
 
 
+def test_event_observe_lambda_observer_with_one_parameter_fails():
+    event = Event()
+    calls = []
+
+    with pytest.raises(ValueError):
+        event.observe(lambda x: calls.append(True))
+
+
 def test_event_observe_mock_observer_times_parameter_limits_calls():
     event = Event()
     mock_observer = NoParametersObserver()

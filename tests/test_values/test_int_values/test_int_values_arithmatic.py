@@ -56,3 +56,17 @@ def test_modulo_int_by_int_value():
 
     v1.value = 4
     assert v2.value == 2
+
+
+def test_int_pos():
+    var = IntVariable(42)
+    result = +var
+    assert result is var
+    assert result.value == 42
+
+
+def test_int_pos_negative():
+    var = IntVariable(-15)
+    result = +var
+    assert result is var
+    assert result.value == -15

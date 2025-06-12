@@ -83,6 +83,16 @@ def test_simple_variable_unobserve_lambda():
     assert calls == [10]
 
 
+def test_simple_variable_bind_twice_to_same():
+    variable = SimpleVariable("test")
+    constant = Constant("value")
+
+    variable.bind_to(constant)
+    variable.bind_to(constant, already_bound_ok=True)
+
+    assert variable.value == "value"
+
+
 def test_simple_variable_bind_to_constant():
     variable = SimpleVariable("old")
     constant = Constant("new")

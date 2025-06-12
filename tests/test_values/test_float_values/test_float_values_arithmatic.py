@@ -114,3 +114,17 @@ def test_modulo_int_by_float_value():
 
     v1.value = 4.0
     assert v2.value == 2.0
+
+
+def test_float_pos():
+    var = FloatVariable(3.14)
+    result = +var
+    assert result is var
+    assert result.value == 3.14
+
+
+def test_float_pos_negative():
+    var = FloatVariable(-2.5)
+    result = +var
+    assert result is var
+    assert result.value == -2.5

@@ -133,3 +133,17 @@ def test_clamp_int_values_reactive_bounds_changes():
 
     max_val.value = 12
     assert clamped.value == 12
+
+
+def test_derived_int_values_map_to_list():
+    value0 = IntConstant(2)
+    value1 = IntConstant(3)
+    added = value0 + value1
+    mapped_value = added.map(lambda x: ["foo"]*x)
+
+    assert mapped_value.value == ["foo", "foo", "foo", "foo", "foo"]
+
+
+def test_int_const_repr():
+    const = IntConstant(42)
+    assert repr(const) == "IntConstant(42)"

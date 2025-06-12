@@ -181,11 +181,6 @@ class MultiplyIntValues(CombinedMixedValues[int, int], IntValue):
         return result
 
 
-class DivideIntValues(CombinedTwoValues[int, int, float], FloatValue):
-    def transform(self, left: int, right: int) -> float:
-        return left / right
-
-
 class FloorDivideIntValues(CombinedTwoValues[int, int, int], IntValue):
     def transform(self, left: int, right: int) -> int:
         return left // right
