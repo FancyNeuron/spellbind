@@ -98,6 +98,9 @@ class FloatValue(Value[float], ABC):
     def __pos__(self) -> Self:
         return self
 
+    def clamp(self, min_value: FloatLike, max_value: FloatLike) -> FloatValue:
+        return ClampFloatValue(self, min_value, max_value)
+
 
 class MappedFloatValue(Generic[_S], DerivedValue[_S, float], FloatValue):
     def __init__(self, value: Value[_S], transform: Callable[[_S], float]) -> None:
@@ -186,6 +189,18 @@ class CombinedTwoFloatValues(CombinedFloatValues[_U], Generic[_U], ABC):
         raise NotImplementedError
 
 
+class CombinedThreeFloatValues(CombinedFloatValues[_U], Generic[_U], ABC):
+    def __init__(self, left: FloatLike, middle: FloatLike, right: FloatLike):
+        super().__init__(left, middle, right)
+
+    def transform(self, values: Sequence[float]) -> _U:
+        return self.transform_three(values[0], values[1], values[2])
+
+    @abstractmethod
+    def transform_three(self, left: float, middle: float, right: float) -> _U:
+        raise NotImplementedError
+
+
 class AddFloatValues(CombinedFloatValues[float], FloatValue):
     def transform(self, values: Sequence[float]) -> float:
         return sum(values)
@@ -244,3 +259,11 @@ class CompareNumbersValues(CombinedTwoFloatValues[bool], BoolValue):
 
     def transform_two(self, left: float, right: float) -> bool:
         return self._op(left, right)
+
+
+class ClampFloatValue(CombinedThreeFloatValues[float], FloatValue):
+    def __init__(self, value: FloatLike, min_value: FloatLike, max_value: FloatLike) -> None:
+        super().__init__(value, min_value, max_value)
+
+    def transform_three(self, value: float, min_value: float, max_value: float) -> float:
+        return max(min_value, min(max_value, value))

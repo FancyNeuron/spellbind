@@ -323,3 +323,15 @@ class CombinedMixedValues(DerivedValueBase[_T], Generic[_S, _T], ABC):
     @property
     def value(self) -> _T:
         return self._value
+
+
+class CombinedThreeValues(CombinedMixedValues[_S, _T], Generic[_S, _T], ABC):
+    def __init__(self, left: Value[_S] | _S, middle: Value[_S] | _S, right: Value[_S] | _S):
+        super().__init__(left, middle, right)
+
+    def transform(self, *values: _S) -> _T:
+        return self.transform_three(values[0], values[1], values[2])
+
+    @abstractmethod
+    def transform_three(self, left: _S, middle: _S, right: _S) -> _T:
+        raise NotImplementedError
