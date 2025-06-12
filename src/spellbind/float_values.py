@@ -7,9 +7,10 @@ from typing import Generic, Callable, Sequence, TypeVar, overload
 from typing_extensions import Self
 from typing_extensions import TYPE_CHECKING
 
-from spellbind.bool_values import BoolValue
+from spellbind.bool_values import BoolValue, BoolLike
 from spellbind.functions import clamp_float, multiply_all_floats
-from spellbind.values import Value, SimpleVariable, OneToOneValue, DerivedValueBase, Constant, TwoToOneValue
+from spellbind.values import Value, SimpleVariable, OneToOneValue, DerivedValueBase, Constant, TwoToOneValue, \
+    SelectValue
 
 if TYPE_CHECKING:
     from spellbind.int_values import IntValue, IntLike  # pragma: no cover
@@ -235,3 +236,8 @@ class CompareNumbersValues(TwoFloatToOneValue[bool], BoolValue):
 class ClampFloatValue(ThreeFloatToOneValue[float], FloatValue):
     def __init__(self, value: FloatLike, min_value: FloatLike, max_value: FloatLike):
         super().__init__(clamp_float, value, min_value, max_value)
+
+
+class SelectFloatValue(SelectValue[float], FloatValue):
+    def __init__(self, condition: BoolLike, if_true: float | Value[float], if_false: float | Value[float]):
+        super().__init__(condition, if_true, if_false)
