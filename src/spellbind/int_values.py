@@ -7,12 +7,12 @@ from typing import overload, Generic
 
 from typing_extensions import Self, TypeVar
 
-from spellbind.bool_values import BoolValue
+from spellbind.bool_values import BoolValue, BoolLike
 from spellbind.float_values import FloatValue, MultiplyFloatValues, DivideValues, SubtractFloatValues, \
     AddFloatValues, CompareNumbersValues
 from spellbind.functions import clamp_int, multiply_all_ints
 from spellbind.values import Value, ManyToOneValue, SimpleVariable, TwoToOneValue, OneToOneValue, Constant, \
-    ThreeToOneValue
+    ThreeToOneValue, SelectValue
 
 IntLike = int | Value[int]
 FloatLike = IntLike | float | FloatValue
@@ -217,3 +217,8 @@ class RoundFloatToIntValue(OneToOneValue[float, int], IntValue):
 class ClampIntValue(ThreeToOneValue[int, int, int, int], IntValue):
     def __init__(self, value: IntLike, min_value: IntLike, max_value: IntLike) -> None:
         super().__init__(clamp_int, value, min_value, max_value)
+
+
+class SelectIntValue(SelectValue[int], IntValue):
+    def __init__(self, condition: BoolLike, if_true: IntLike, if_false: IntLike):
+        super().__init__(condition, if_true, if_false)

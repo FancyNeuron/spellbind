@@ -3,7 +3,8 @@ from __future__ import annotations
 from abc import ABC
 from typing import Any, Generic, TypeVar
 
-from spellbind.values import Value, OneToOneValue, ManyToOneValue, SimpleVariable, Constant
+from spellbind.bool_values import BoolLike, StrLike
+from spellbind.values import Value, OneToOneValue, ManyToOneValue, SimpleVariable, Constant, SelectValue
 
 StringLike = str | Value[str]
 
@@ -41,3 +42,8 @@ class ToStrValue(OneToOneValue[Any, str], StrValue):
 class ConcatenateStrValues(ManyToOneValue[str, str], StrValue):
     def __init__(self, *values: StringLike):
         super().__init__(''.join, *values)
+
+
+class SelectStrValue(SelectValue[str], StrValue):
+    def __init__(self, condition: BoolLike, if_true: StrLike, if_false: StrLike):
+        super().__init__(condition, if_true, if_false)

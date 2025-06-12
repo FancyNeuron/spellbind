@@ -9,7 +9,7 @@ from spellbind.observables import ValueObservable, Observer, ValueObserver
 if TYPE_CHECKING:
     from spellbind.str_values import StrValue  # pragma: no cover
     from spellbind.int_values import IntValue  # pragma: no cover
-    from spellbind.bool_values import BoolValue  # pragma: no cover
+    from spellbind.bool_values import BoolValue, BoolLike  # pragma: no cover
 
 
 EMPTY_FROZEN_SET: frozenset = frozenset()
@@ -275,3 +275,8 @@ class ThreeToOneValue(DerivedValueBase[_V], Generic[_S, _T, _U, _V]):
 
     def _calculate_value(self) -> _V:
         return self._transformer(self._first_getter(), self._second_getter(), self._third_getter())
+
+
+class SelectValue(ThreeToOneValue[bool, _S, _S, _S], Generic[_S]):
+    def __init__(self, condition: BoolLike, if_true: Value[_S] | _S, if_false: Value[_S] | _S):
+        super().__init__(lambda b, t, f: t if b else f, condition, if_true, if_false)
