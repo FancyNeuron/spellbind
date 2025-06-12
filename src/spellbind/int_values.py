@@ -3,15 +3,16 @@ from __future__ import annotations
 import math
 import operator
 from abc import ABC
-from typing import overload, Generic, Callable
+from typing import overload, Generic
 
 from typing_extensions import Self, TypeVar
 
 from spellbind.bool_values import BoolValue
 from spellbind.float_values import FloatValue, MultiplyFloatValues, DivideValues, SubtractFloatValues, \
     AddFloatValues, CompareNumbersValues
-from spellbind.values import Value, CombinedMixedValues, SimpleVariable, CombinedTwoValues, DerivedValue, Constant, \
-    CombinedThreeValues
+from spellbind.functions import clamp_int, multiply_all_ints
+from spellbind.values import Value, ManyToOneValue, SimpleVariable, TwoToOneValue, OneToOneValue, Constant, \
+    ThreeToOneValue
 
 IntLike = int | Value[int]
 FloatLike = IntLike | float | FloatValue
@@ -136,13 +137,8 @@ class IntValue(Value[int], ABC):
         return ClampIntValue(self, min_value, max_value)
 
 
-class MappedIntValue(Generic[_S], DerivedValue[_S, int], IntValue):
-    def __init__(self, value: Value[_S], transform: Callable[[_S], int]) -> None:
-        self._transform = transform
-        super().__init__(value)
-
-    def transform(self, value: _S) -> int:
-        return self._transform(value)
+class OneToIntValue(Generic[_S], OneToOneValue[_S, int], IntValue):
+    pass
 
 
 class IntConstant(IntValue, Constant[int]):
@@ -153,77 +149,71 @@ class IntVariable(SimpleVariable[int], IntValue):
     pass
 
 
-class MaxIntValues(CombinedMixedValues[int, int], IntValue):
-    def transform(self, *values: int) -> int:
-        return max(values)
+class MaxIntValues(ManyToOneValue[int, int], IntValue):
+    def __init__(self, *values: IntLike):
+        super().__init__(max, *values)
 
 
-class MinIntValues(CombinedMixedValues[int, int], IntValue):
-    def transform(self, *values: int) -> int:
-        return min(values)
+class MinIntValues(ManyToOneValue[int, int], IntValue):
+    def __init__(self, *values: IntLike):
+        super().__init__(min, *values)
 
 
-class AddIntValues(CombinedMixedValues[int, int], IntValue):
-    def transform(self, *values: int) -> int:
-        return sum(values)
+class AddIntValues(ManyToOneValue[int, int], IntValue):
+    def __init__(self, *values: IntLike):
+        super().__init__(sum, *values)
 
 
-class SubtractIntValues(CombinedTwoValues[int, int, int], IntValue):
-    def transform(self, left: int, right: int) -> int:
-        return left - right
+class SubtractIntValues(TwoToOneValue[int, int, int], IntValue):
+    def __init__(self, left: IntLike, right: IntLike):
+        super().__init__(operator.sub, left, right)
 
 
-class MultiplyIntValues(CombinedMixedValues[int, int], IntValue):
-    def transform(self, *values: int) -> int:
-        result = 1
-        for value in values:
-            result *= value
-        return result
+class MultiplyIntValues(ManyToOneValue[int, int], IntValue):
+    def __init__(self, *values: IntLike):
+        super().__init__(multiply_all_ints, *values)
 
 
-class FloorDivideIntValues(CombinedTwoValues[int, int, int], IntValue):
-    def transform(self, left: int, right: int) -> int:
-        return left // right
+class FloorDivideIntValues(TwoToOneValue[int, int, int], IntValue):
+    def __init__(self, left: IntLike, right: IntLike):
+        super().__init__(operator.floordiv, left, right)
 
 
-class PowerIntValues(CombinedTwoValues[int, int, int], IntValue):
-    def transform(self, left: int, right: int) -> int:
-        return left ** right
+class PowerIntValues(TwoToOneValue[int, int, int], IntValue):
+    def __init__(self, left: IntLike, right: IntLike):
+        super().__init__(operator.pow, left, right)
 
 
-class ModuloIntValues(CombinedTwoValues[int, int, int], IntValue):
-    def transform(self, left: int, right: int) -> int:
-        return left % right
+class ModuloIntValues(TwoToOneValue[int, int, int], IntValue):
+    def __init__(self, left: IntLike, right: IntLike):
+        super().__init__(operator.mod, left, right)
 
 
-class AbsIntValue(DerivedValue[int, int], IntValue):
-    def transform(self, value: int) -> int:
-        return abs(value)
+class AbsIntValue(OneToOneValue[int, int], IntValue):
+    def __init__(self, value: Value[int]):
+        super().__init__(abs, value)
 
 
-class NegateIntValue(DerivedValue[int, int], IntValue):
-    def transform(self, value: int) -> int:
-        return -value
+class NegateIntValue(OneToOneValue[int, int], IntValue):
+    def __init__(self, value: Value[int]):
+        super().__init__(operator.neg, value)
 
 
-class FloorFloatValue(DerivedValue[float, int], IntValue):
-    def transform(self, value: float) -> int:
-        return math.floor(value)
+class FloorFloatValue(OneToOneValue[float, int], IntValue):
+    def __init__(self, value: Value[float]):
+        super().__init__(math.floor, value)
 
 
-class CeilFloatValue(DerivedValue[float, int], IntValue):
-    def transform(self, value: float) -> int:
-        return math.ceil(value)
+class CeilFloatValue(OneToOneValue[float, int], IntValue):
+    def __init__(self, value: Value[float]):
+        super().__init__(math.ceil, value)
 
 
-class RoundFloatToIntValue(DerivedValue[float, int], IntValue):
-    def transform(self, value: float) -> int:
-        return round(value)
+class RoundFloatToIntValue(OneToOneValue[float, int], IntValue):
+    def __init__(self, value: Value[float]):
+        super().__init__(round, value)
 
 
-class ClampIntValue(CombinedThreeValues[int, int], IntValue):
+class ClampIntValue(ThreeToOneValue[int, int, int, int], IntValue):
     def __init__(self, value: IntLike, min_value: IntLike, max_value: IntLike) -> None:
-        super().__init__(value, min_value, max_value)
-
-    def transform_three(self, value: int, min_value: int, max_value: int) -> int:
-        return max(min_value, min(max_value, value))
+        super().__init__(clamp_int, value, min_value, max_value)

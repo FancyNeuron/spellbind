@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 from abc import ABC
-from typing import Any, Generic, Callable, TypeVar
+from typing import Any, Generic, TypeVar
 
-from spellbind.values import Value, DerivedValue, CombinedMixedValues, SimpleVariable, Constant
+from spellbind.values import Value, OneToOneValue, ManyToOneValue, SimpleVariable, Constant
 
 StringLike = str | Value[str]
 
@@ -21,16 +21,11 @@ class StrValue(Value[str], ABC):
         return self
 
 
-class MappedStrValue(Generic[_S], DerivedValue[_S, str], StrValue):
-    def __init__(self, value: Value[_S], transform: Callable[[_S], str]) -> None:
-        self._transform = transform
-        super().__init__(value)
-
-    def transform(self, value: _S) -> str:
-        return self._transform(value)
+class OneToStrValue(OneToOneValue[_S, str], StrValue, Generic[_S]):
+    pass
 
 
-class StrConstant(StrValue, Constant[str]):
+class StrConstant(Constant[str], StrValue):
     pass
 
 
@@ -38,11 +33,11 @@ class StrVariable(SimpleVariable[str], StrValue):
     pass
 
 
-class ToStrValue(DerivedValue[Any, str], StrValue):
-    def transform(self, value: Any) -> str:
-        return str(value)
+class ToStrValue(OneToOneValue[Any, str], StrValue):
+    def __init__(self, value: Value[Any]):
+        super().__init__(str, value)
 
 
-class ConcatenateStrValues(CombinedMixedValues[str, str], StrValue):
-    def transform(self, *values: str) -> str:
-        return ''.join(value for value in values)
+class ConcatenateStrValues(ManyToOneValue[str, str], StrValue):
+    def __init__(self, *values: StringLike):
+        super().__init__(''.join, *values)

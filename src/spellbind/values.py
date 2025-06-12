@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import TypeVar, Generic, Optional, Any, Iterable, TYPE_CHECKING, Callable
+from typing import TypeVar, Generic, Optional, Any, Iterable, TYPE_CHECKING, Callable, Sequence
 
 from spellbind.event import ValueEvent
 from spellbind.observables import ValueObservable, Observer, ValueObserver
@@ -17,6 +17,14 @@ EMPTY_FROZEN_SET: frozenset = frozenset()
 _S = TypeVar("_S")
 _T = TypeVar("_T")
 _U = TypeVar("_U")
+_V = TypeVar("_V")
+
+
+def _create_value_getter(value: Value[_S] | _S) -> Callable[[], _S]:
+    if isinstance(value, Value):
+        return lambda: value.value
+    else:
+        return lambda: value
 
 
 class Value(ValueObservable[_S], Generic[_S], ABC):
@@ -57,23 +65,23 @@ class Value(ValueObservable[_S], Generic[_S], ABC):
         return f"{self.__class__.__name__}({self.value!r})"
 
     def map(self, transformer: Callable[[_S], _T]) -> Value[_T]:
-        return MappedValue(self, transformer)
+        return OneToOneValue(transformer, self)
 
     def map_to_int(self, transformer: Callable[[_S], int]) -> IntValue:
-        from spellbind.int_values import MappedIntValue
-        return MappedIntValue(self, transformer)
+        from spellbind.int_values import OneToIntValue
+        return OneToIntValue(transformer, self)
 
     def map_to_float(self, transformer: Callable[[_S], float]) -> Value[float]:
-        from spellbind.float_values import MappedFloatValue
-        return MappedFloatValue(self, transformer)
+        from spellbind.float_values import OneToFloatValue
+        return OneToFloatValue(transformer, self)
 
     def map_to_str(self, transformer: Callable[[_S], str]) -> StrValue:
-        from spellbind.str_values import MappedStrValue
-        return MappedStrValue(self, transformer)
+        from spellbind.str_values import OneToStrValue
+        return OneToStrValue(transformer, self)
 
     def map_to_bool(self, transformer: Callable[[_S], bool]) -> BoolValue:
-        from spellbind.bool_values import MappedBoolValue
-        return MappedBoolValue(self, transformer)
+        from spellbind.bool_values import OneToBoolValue
+        return OneToBoolValue(transformer, self)
 
 
 class Variable(Value[_S], Generic[_S], ABC):
@@ -187,141 +195,83 @@ class Constant(Value[_S], Generic[_S]):
         return EMPTY_FROZEN_SET
 
 
-class DerivedValueBase(Value[_T], Generic[_T], ABC):
-    def __init__(self, *values: Value):
-        self._values = frozenset(values)
-        self._on_change: ValueEvent[_T] = ValueEvent()
-
-    def derived_from(self) -> frozenset[Value]:
-        return self._values
-
-    def observe(self, observer: Observer | ValueObserver[_T], times: int | None = None) -> None:
-        self._on_change.observe(observer, times)
-
-    def weak_observe(self, observer: Observer | ValueObserver[_T], times: int | None = None) -> None:
-        self._on_change.weak_observe(observer, times)
-
-    def unobserve(self, observer: Observer | ValueObserver[_T]) -> None:
-        self._on_change.unobserve(observer)
-
-
-class DerivedValue(DerivedValueBase[_T], Generic[_S, _T], ABC):
-    def __init__(self, of: Value[_S]):
-        super().__init__(of)
-        self._value = self.transform(of.value)
-        of.weak_observe(self._on_source_change)
-
-    @abstractmethod
-    def transform(self, value: _S) -> _T: ...
-
-    def _on_source_change(self, new_source_value: _S) -> None:
-        new_transformed_value = self.transform(new_source_value)
-        if new_transformed_value != self._value:
-            self._value = new_transformed_value
-            self._on_change(self._value)
-
-    @property
-    def value(self) -> _T:
-        return self._value
-
-
-class MappedValue(DerivedValue[_S, _T], Generic[_S, _T]):
-    def __init__(self, of: Value[_S], transformer: Callable[[_S], _T]):
-        self._transformer = transformer
-        self._of = of
-        super().__init__(of)
-
-    def transform(self, value: _S) -> _T:
-        return self._transformer(value)
-
-
-def _create_value_getter(value: Value[_S] | _S) -> Callable[[], _S]:
-    if isinstance(value, Value):
-        return lambda: value.value
-    else:
-        return lambda: value
-
-
-class CombinedTwoValues(DerivedValueBase[_U], Generic[_S, _T, _U], ABC):
-    _on_change: ValueEvent[_U]
-
-    def __init__(self, left: Value[_S] | _S, right: Value[_T] | _T):
-        super().__init__(*[v for v in (left, right) if isinstance(v, Value)])
-        self._left_getter = _create_value_getter(left)
-        self._right_getter = _create_value_getter(right)
-        if isinstance(left, Value):
-            left.weak_observe(self._on_left_change)
-        if isinstance(right, Value):
-            right.weak_observe(self._on_right_change)
-        self._value = self.transform(self._left_getter(), self._right_getter())
-
-    def _on_left_change(self, new_left_value: _S) -> None:
-        new_value = self.transform(new_left_value, self._right_getter())
-        self._on_result_change(new_value)
-
-    def _on_right_change(self, new_right_value: _T) -> None:
-        new_value = self.transform(self._left_getter(), new_right_value)
-        self._on_result_change(new_value)
-
-    def _on_result_change(self, new_value: _U) -> None:
-        if new_value != self._value:
-            self._value = new_value
-            self._on_change(self._value)
-
-    @abstractmethod
-    def transform(self, left: _S, right: _T) -> _U: ...
-
-    @property
-    def value(self) -> _U:
-        return self._value
-
-
-def _get_value(value: Value[_S] | _S) -> _S:
-    if isinstance(value, Value):
-        return value.value
-    else:
-        return value
-
-
-class CombinedMixedValues(DerivedValueBase[_T], Generic[_S, _T], ABC):
-    def __init__(self, *sources: Value[_S] | _S):
-        super().__init__(*[v for v in sources if isinstance(v, Value)])
-        self.gotten_values = [_get_value(v) for v in sources]
-        self._callbacks: list[Callable] = []
-        for i, v in enumerate(sources):
-            if isinstance(v, Value):
-                v.weak_observe(self._create_on_n_changed(i))
+class DerivedValueBase(Value[_S], Generic[_S], ABC):
+    def __init__(self, *derived_from: Value):
+        self._derived_from = frozenset(derived_from)
+        self._on_change: ValueEvent[_S] = ValueEvent()
+        for value in derived_from:
+            value.weak_observe(self._on_dependency_changed)
         self._value = self._calculate_value()
 
-    def _create_on_n_changed(self, index: int) -> Callable[[_S], None]:
-        def on_change(new_value: _S) -> None:
-            self.gotten_values[index] = new_value
-            self._on_result_change(self._calculate_value())
-        self._callbacks.append(on_change)  # keep strong reference to callback so it won't be garbage collected
-        return on_change
+    def observe(self, observer: Observer | ValueObserver[_S], times: int | None = None) -> None:
+        self._on_change.observe(observer, times)
 
-    def _calculate_value(self) -> _T:
-        return self.transform(*self.gotten_values)
+    def weak_observe(self, observer: Observer | ValueObserver[_S], times: int | None = None) -> None:
+        self._on_change.weak_observe(observer, times)
 
-    def _on_result_change(self, new_value: _T) -> None:
+    def unobserve(self, observer: Observer | ValueObserver[_S]) -> None:
+        self._on_change.unobserve(observer)
+
+    def derived_from(self) -> frozenset[Value]:
+        return self._derived_from
+
+    def _on_dependency_changed(self) -> None:
+        new_value = self._calculate_value()
         if new_value != self._value:
             self._value = new_value
             self._on_change(self._value)
 
     @abstractmethod
-    def transform(self, *args: _S) -> _T: ...
+    def _calculate_value(self) -> _S: ...
 
     @property
-    def value(self) -> _T:
+    def value(self) -> _S:
         return self._value
 
 
-class CombinedThreeValues(CombinedMixedValues[_S, _T], Generic[_S, _T], ABC):
-    def __init__(self, left: Value[_S] | _S, middle: Value[_S] | _S, right: Value[_S] | _S):
-        super().__init__(left, middle, right)
+class OneToOneValue(DerivedValueBase[_T], Generic[_S, _T]):
+    _getter: Callable[[], _S]
 
-    def transform(self, *values: _S) -> _T:
-        return self.transform_three(values[0], values[1], values[2])
+    def __init__(self, transformer: Callable[[_S], _T], of: Value[_S]):
+        self._getter = _create_value_getter(of)
+        self._transformer = transformer
+        super().__init__(*[v for v in (of,) if isinstance(v, Value)])
 
-    @abstractmethod
-    def transform_three(self, left: _S, middle: _S, right: _S) -> _T: ...
+    def _calculate_value(self) -> _T:
+        return self._transformer(self._getter())
+
+
+class ManyToOneValue(DerivedValueBase[_T], Generic[_S, _T]):
+    def __init__(self, transformer: Callable[[Sequence[_S]], _T], *values: _S | Value[_S]):
+        self._value_getters = [_create_value_getter(v) for v in values]
+        self._transformer = transformer
+        super().__init__(*[v for v in values if isinstance(v, Value)])
+
+    def _calculate_value(self) -> _T:
+        gotten_values = [getter() for getter in self._value_getters]
+        return self._transformer(gotten_values)
+
+
+class TwoToOneValue(DerivedValueBase[_U], Generic[_S, _T, _U]):
+    def __init__(self, transformer: Callable[[_S, _T], _U],
+                 first: Value[_S] | _S, second: Value[_T] | _T):
+        self._transformer = transformer
+        self._first_getter = _create_value_getter(first)
+        self._second_getter = _create_value_getter(second)
+        super().__init__(*[v for v in (first, second) if isinstance(v, Value)])
+
+    def _calculate_value(self) -> _U:
+        return self._transformer(self._first_getter(), self._second_getter())
+
+
+class ThreeToOneValue(DerivedValueBase[_V], Generic[_S, _T, _U, _V]):
+    def __init__(self, transformer: Callable[[_S, _T, _U], _V],
+                 first: Value[_S] | _S, second: Value[_T] | _T, third: Value[_U] | _U):
+        self._transformer = transformer
+        self._first_getter = _create_value_getter(first)
+        self._second_getter = _create_value_getter(second)
+        self._third_getter = _create_value_getter(third)
+        super().__init__(*[v for v in (first, second, third) if isinstance(v, Value)])
+
+    def _calculate_value(self) -> _V:
+        return self._transformer(self._first_getter(), self._second_getter(), self._third_getter())

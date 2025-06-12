@@ -1,14 +1,15 @@
 from __future__ import annotations
 
 import operator
-from abc import ABC, abstractmethod
+from abc import ABC
 from typing import Generic, Callable, Sequence, TypeVar, overload
 
 from typing_extensions import Self
 from typing_extensions import TYPE_CHECKING
 
 from spellbind.bool_values import BoolValue
-from spellbind.values import Value, SimpleVariable, DerivedValue, DerivedValueBase, Constant, CombinedTwoValues
+from spellbind.functions import clamp_float, multiply_all_floats
+from spellbind.values import Value, SimpleVariable, OneToOneValue, DerivedValueBase, Constant, TwoToOneValue
 
 if TYPE_CHECKING:
     from spellbind.int_values import IntValue, IntLike  # pragma: no cover
@@ -102,13 +103,8 @@ class FloatValue(Value[float], ABC):
         return ClampFloatValue(self, min_value, max_value)
 
 
-class MappedFloatValue(Generic[_S], DerivedValue[_S, float], FloatValue):
-    def __init__(self, value: Value[_S], transform: Callable[[_S], float]) -> None:
-        self._transform = transform
-        super().__init__(value)
-
-    def transform(self, value: _S) -> float:
-        return self._transform(value)
+class OneToFloatValue(Generic[_S], OneToOneValue[_S, float], FloatValue):
+    pass
 
 
 class FloatConstant(FloatValue, Constant[float]):
@@ -119,141 +115,123 @@ class FloatVariable(SimpleVariable[float], FloatValue):
     pass
 
 
-def _get_float(value: float | Value[int] | Value[float]) -> float:
+def _create_float_getter(value: float | Value[int] | Value[float]) -> Callable[[], float]:
     if isinstance(value, Value):
-        return value.value
+        return lambda: value.value
     else:
-        return value
+        return lambda: value
 
 
-class CombinedFloatValues(DerivedValueBase[_U], Generic[_U], ABC):
-    def __init__(self, *values: float | Value[int] | Value[float]):
-        super().__init__(*[v for v in values if isinstance(v, Value)])
-        self._gotten_values = [_get_float(v) for v in values]
-        self._callbacks: list[Callable] = []
-        for i, v in enumerate(values):
-            if isinstance(v, Value):
-                v.weak_observe(self._create_on_n_changed(i))
-        self._value = self._calculate_value()
-
-    def _create_on_n_changed(self, index: int) -> Callable[[float], None]:
-        def on_change(new_value: float) -> None:
-            self._gotten_values[index] = new_value
-            self._on_result_change(self._calculate_value())
-        self._callbacks.append(on_change)  # keep strong reference to callback so it won't be garbage collected
-        return on_change
-
-    def _calculate_value(self) -> _U:
-        return self.transform(self._gotten_values)
-
-    def _on_result_change(self, new_value: _U) -> None:
-        if new_value != self._value:
-            self._value = new_value
-            self._on_change(self._value)
-
-    @abstractmethod
-    def transform(self, values: Sequence[float]) -> _U: ...
+class OneFloatToOneValue(DerivedValueBase[_S], Generic[_S]):
+    def __init__(self, transformer: Callable[[float], _S], of: FloatLike):
+        self._getter = _create_float_getter(of)
+        self._transformer = transformer
+        super().__init__(*[v for v in (of,) if isinstance(v, Value)])
 
     @property
-    def value(self) -> _U:
+    def value(self) -> _S:
         return self._value
 
-
-class MaxFloatValues(CombinedFloatValues[float], FloatValue):
-    def transform(self, values: Sequence[float]) -> float:
-        return max(values)
+    def _calculate_value(self) -> _S:
+        return self._transformer(self._getter())
 
 
-class MinFloatValues(CombinedFloatValues[float], FloatValue):
-    def transform(self, values: Sequence[float]) -> float:
-        return min(values)
+class ManyFloatToOneValue(DerivedValueBase[_S], Generic[_S]):
+    def __init__(self, transformer: Callable[[Sequence[float]], _S], *values: FloatLike):
+        self._value_getters = [_create_float_getter(v) for v in values]
+        self._transformer = transformer
+        super().__init__(*[v for v in values if isinstance(v, Value)])
+
+    def _calculate_value(self) -> _S:
+        gotten_values = [getter() for getter in self._value_getters]
+        return self._transformer(gotten_values)
 
 
-class CombinedTwoFloatValues(CombinedFloatValues[_U], Generic[_U], ABC):
+class TwoFloatToOneValue(DerivedValueBase[_S], Generic[_S]):
+    def __init__(self, transformer: Callable[[float, float], _S],
+                 first: FloatLike, second: FloatLike):
+        self._transformer = transformer
+        self._first_getter = _create_float_getter(first)
+        self._second_getter = _create_float_getter(second)
+        super().__init__(*[v for v in (first, second) if isinstance(v, Value)])
+
+    def _calculate_value(self) -> _S:
+        return self._transformer(self._first_getter(), self._second_getter())
+
+
+class ThreeFloatToOneValue(DerivedValueBase[_S], Generic[_S]):
+    def __init__(self, transformer: Callable[[float, float, float], _S],
+                 first: FloatLike, second: FloatLike, third: FloatLike):
+        self._transformer = transformer
+        self._first_getter = _create_float_getter(first)
+        self._second_getter = _create_float_getter(second)
+        self._third_getter = _create_float_getter(third)
+        super().__init__(*[v for v in (first, second, third) if isinstance(v, Value)])
+
+    def _calculate_value(self) -> _S:
+        return self._transformer(self._first_getter(), self._second_getter(), self._third_getter())
+
+
+class MaxFloatValues(ManyFloatToOneValue[float], FloatValue):
+    def __init__(self, *values: FloatLike):
+        super().__init__(max, *values)
+
+
+class MinFloatValues(ManyFloatToOneValue[float], FloatValue):
+    def __init__(self, *values: FloatLike):
+        super().__init__(min, *values)
+
+
+class AddFloatValues(ManyFloatToOneValue[float], FloatValue):
+    def __init__(self, *values: FloatLike):
+        super().__init__(sum, *values)
+
+
+class SubtractFloatValues(TwoFloatToOneValue[float], FloatValue):
     def __init__(self, left: FloatLike, right: FloatLike):
-        super().__init__(left, right)
-
-    def transform(self, values: Sequence[float]) -> _U:
-        return self.transform_two(values[0], values[1])
-
-    @abstractmethod
-    def transform_two(self, left: float, right: float) -> _U: ...
+        super().__init__(operator.sub, left, right)
 
 
-class CombinedThreeFloatValues(CombinedFloatValues[_U], Generic[_U], ABC):
-    def __init__(self, left: FloatLike, middle: FloatLike, right: FloatLike):
-        super().__init__(left, middle, right)
-
-    def transform(self, values: Sequence[float]) -> _U:
-        return self.transform_three(values[0], values[1], values[2])
-
-    @abstractmethod
-    def transform_three(self, left: float, middle: float, right: float) -> _U: ...
+class MultiplyFloatValues(ManyFloatToOneValue[float], FloatValue):
+    def __init__(self, *values: FloatLike):
+        super().__init__(multiply_all_floats, *values)
 
 
-class AddFloatValues(CombinedFloatValues[float], FloatValue):
-    def transform(self, values: Sequence[float]) -> float:
-        return sum(values)
-
-
-class SubtractFloatValues(CombinedTwoFloatValues[float], FloatValue):
-    def transform_two(self, left: float, right: float) -> float:
-        return left - right
-
-
-class MultiplyFloatValues(CombinedFloatValues[float], FloatValue):
-    def transform(self, values: Sequence[float]) -> float:
-        result = 1.0
-        for value in values:
-            result *= value
-        return result
-
-
-class DivideValues(CombinedTwoFloatValues[float], FloatValue):
-    def transform_two(self, left: float, right: float) -> float:
-        return left / right
-
-
-class RoundFloatValue(CombinedTwoValues[float, int, float], FloatValue):
+class RoundFloatValue(TwoToOneValue[float, int, float], FloatValue):
     def __init__(self, value: FloatValue, ndigits: IntLike):
-        super().__init__(value, ndigits)
-
-    def transform(self, value: float, ndigits: int) -> float:
-        return round(value, ndigits)
+        super().__init__(round, value, ndigits)
 
 
-class ModuloFloatValues(CombinedTwoFloatValues[float], FloatValue):
-    def transform_two(self, left: float, right: float) -> float:
-        return left % right
+class DivideValues(TwoFloatToOneValue[float], FloatValue):
+    def __init__(self, left: FloatLike, right: FloatLike):
+        super().__init__(operator.truediv, left, right)
 
 
-class AbsFloatValue(DerivedValue[float, float], FloatValue):
-    def transform(self, value: float) -> float:
-        return abs(value)
+class ModuloFloatValues(TwoFloatToOneValue[float], FloatValue):
+    def __init__(self, left: FloatLike, right: FloatLike):
+        super().__init__(operator.mod, left, right)
 
 
-class PowerFloatValues(CombinedTwoFloatValues[float], FloatValue):
-    def transform_two(self, left: float, right: float) -> float:
-        return left ** right
+class AbsFloatValue(OneFloatToOneValue[float], FloatValue):
+    def __init__(self, value: FloatLike):
+        super().__init__(abs, value)
 
 
-class NegateFloatValue(DerivedValue[float, float], FloatValue):
-    def transform(self, value: float) -> float:
-        return -value
+class PowerFloatValues(TwoFloatToOneValue[float], FloatValue):
+    def __init__(self, left: FloatLike, right: FloatLike):
+        super().__init__(operator.pow, left, right)
 
 
-class CompareNumbersValues(CombinedTwoFloatValues[bool], BoolValue):
+class NegateFloatValue(OneFloatToOneValue[float], FloatValue):
+    def __init__(self, value: FloatLike):
+        super().__init__(operator.neg, value)
+
+
+class CompareNumbersValues(TwoFloatToOneValue[bool], BoolValue):
     def __init__(self, left: FloatLike, right: FloatLike, op: Callable[[float, float], bool]):
-        self._op = op
-        super().__init__(left, right)
-
-    def transform_two(self, left: float, right: float) -> bool:
-        return self._op(left, right)
+        super().__init__(op, left, right)
 
 
-class ClampFloatValue(CombinedThreeFloatValues[float], FloatValue):
-    def __init__(self, value: FloatLike, min_value: FloatLike, max_value: FloatLike) -> None:
-        super().__init__(value, min_value, max_value)
-
-    def transform_three(self, value: float, min_value: float, max_value: float) -> float:
-        return max(min_value, min(max_value, value))
+class ClampFloatValue(ThreeFloatToOneValue[float], FloatValue):
+    def __init__(self, value: FloatLike, min_value: FloatLike, max_value: FloatLike):
+        super().__init__(clamp_float, value, min_value, max_value)
