@@ -159,8 +159,7 @@ class CombinedFloatValues(DerivedValueBase[_U], Generic[_U], ABC):
             self._on_change(self._value)
 
     @abstractmethod
-    def transform(self, values: Sequence[float]) -> _U:
-        raise NotImplementedError
+    def transform(self, values: Sequence[float]) -> _U: ...
 
     @property
     def value(self) -> _U:
@@ -185,8 +184,7 @@ class CombinedTwoFloatValues(CombinedFloatValues[_U], Generic[_U], ABC):
         return self.transform_two(values[0], values[1])
 
     @abstractmethod
-    def transform_two(self, left: float, right: float) -> _U:
-        raise NotImplementedError
+    def transform_two(self, left: float, right: float) -> _U: ...
 
 
 class CombinedThreeFloatValues(CombinedFloatValues[_U], Generic[_U], ABC):
@@ -197,8 +195,7 @@ class CombinedThreeFloatValues(CombinedFloatValues[_U], Generic[_U], ABC):
         return self.transform_three(values[0], values[1], values[2])
 
     @abstractmethod
-    def transform_three(self, left: float, middle: float, right: float) -> _U:
-        raise NotImplementedError
+    def transform_three(self, left: float, middle: float, right: float) -> _U: ...
 
 
 class AddFloatValues(CombinedFloatValues[float], FloatValue):

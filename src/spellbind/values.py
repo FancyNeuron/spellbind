@@ -22,12 +22,10 @@ _U = TypeVar("_U")
 class Value(ValueObservable[_S], Generic[_S], ABC):
     @property
     @abstractmethod
-    def value(self) -> _S:
-        raise NotImplementedError
+    def value(self) -> _S: ...
 
     @abstractmethod
-    def derived_from(self) -> frozenset[Value]:
-        raise NotImplementedError
+    def derived_from(self) -> frozenset[Value]: ...
 
     @property
     def deep_derived_from(self) -> Iterable[Value]:
@@ -81,21 +79,17 @@ class Value(ValueObservable[_S], Generic[_S], ABC):
 class Variable(Value[_S], Generic[_S], ABC):
     @property
     @abstractmethod
-    def value(self) -> _S:
-        raise NotImplementedError
+    def value(self) -> _S: ...
 
     @value.setter
     @abstractmethod
-    def value(self, new_value: _S) -> None:
-        raise NotImplementedError
+    def value(self, new_value: _S) -> None: ...
 
     @abstractmethod
-    def bind_to(self, value: Value[_S], already_bound_ok: bool = False, bind_weakly: bool = True) -> None:
-        raise NotImplementedError
+    def bind_to(self, value: Value[_S], already_bound_ok: bool = False, bind_weakly: bool = True) -> None: ...
 
     @abstractmethod
-    def unbind(self, not_bound_ok: bool = False) -> None:
-        raise NotImplementedError
+    def unbind(self, not_bound_ok: bool = False) -> None: ...
 
 
 class SimpleVariable(Variable[_S], Generic[_S]):
@@ -218,8 +212,7 @@ class DerivedValue(DerivedValueBase[_T], Generic[_S, _T], ABC):
         of.weak_observe(self._on_source_change)
 
     @abstractmethod
-    def transform(self, value: _S) -> _T:
-        raise NotImplementedError
+    def transform(self, value: _S) -> _T: ...
 
     def _on_source_change(self, new_source_value: _S) -> None:
         new_transformed_value = self.transform(new_source_value)
@@ -276,8 +269,7 @@ class CombinedTwoValues(DerivedValueBase[_U], Generic[_S, _T, _U], ABC):
             self._on_change(self._value)
 
     @abstractmethod
-    def transform(self, left: _S, right: _T) -> _U:
-        raise NotImplementedError
+    def transform(self, left: _S, right: _T) -> _U: ...
 
     @property
     def value(self) -> _U:
@@ -317,8 +309,7 @@ class CombinedMixedValues(DerivedValueBase[_T], Generic[_S, _T], ABC):
             self._on_change(self._value)
 
     @abstractmethod
-    def transform(self, *args: _S) -> _T:
-        raise NotImplementedError
+    def transform(self, *args: _S) -> _T: ...
 
     @property
     def value(self) -> _T:
@@ -333,5 +324,4 @@ class CombinedThreeValues(CombinedMixedValues[_S, _T], Generic[_S, _T], ABC):
         return self.transform_three(values[0], values[1], values[2])
 
     @abstractmethod
-    def transform_three(self, left: _S, middle: _S, right: _S) -> _T:
-        raise NotImplementedError
+    def transform_three(self, left: _S, middle: _S, right: _S) -> _T: ...
