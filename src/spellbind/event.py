@@ -20,8 +20,7 @@ class _BaseEvent(Generic[_O], ABC):
         self._subscriptions = []
 
     @abstractmethod
-    def _get_parameter_count(self) -> int:
-        raise NotImplementedError
+    def _get_parameter_count(self) -> int: ...
 
     def observe(self, observer: _O, times: int | None = None) -> None:
         assert_parameter_max_count(observer, self._get_parameter_count())

@@ -57,12 +57,10 @@ class Subscription(Generic[_O], ABC):
             raise CallCountExceededError
 
     @abstractmethod
-    def __call__(self, *args) -> None:
-        raise NotImplementedError
+    def __call__(self, *args) -> None: ...
 
     @abstractmethod
-    def matches_observer(self, observer: _O) -> bool:
-        raise NotImplementedError
+    def matches_observer(self, observer: _O) -> bool: ...
 
 
 class StrongSubscription(Subscription[_O], Generic[_O]):
@@ -99,59 +97,47 @@ class WeakSubscription(Subscription[_O], Generic[_O]):
 
 class Observable(ABC):
     @abstractmethod
-    def observe(self, observer: Observer, times: int | None = None) -> None:
-        raise NotImplementedError
+    def observe(self, observer: Observer, times: int | None = None) -> None: ...
 
     @abstractmethod
-    def weak_observe(self, observer: Observer, times: int | None = None) -> None:
-        raise NotImplementedError
+    def weak_observe(self, observer: Observer, times: int | None = None) -> None: ...
 
     @abstractmethod
-    def unobserve(self, observer: Observer) -> None:
-        raise NotImplementedError
+    def unobserve(self, observer: Observer) -> None: ...
 
 
 class ValueObservable(Observable, Generic[_S], ABC):
     @abstractmethod
-    def observe(self, observer: Observer | ValueObserver[_S], times: int | None = None) -> None:
-        raise NotImplementedError
+    def observe(self, observer: Observer | ValueObserver[_S], times: int | None = None) -> None: ...
 
     @abstractmethod
-    def weak_observe(self, observer: Observer | ValueObserver[_S], times: int | None = None) -> None:
-        raise NotImplementedError
+    def weak_observe(self, observer: Observer | ValueObserver[_S], times: int | None = None) -> None: ...
 
     @abstractmethod
-    def unobserve(self, observer: Observer | ValueObserver[_S]) -> None:
-        raise NotImplementedError
+    def unobserve(self, observer: Observer | ValueObserver[_S]) -> None: ...
 
 
 class BiObservable(ValueObservable[_S], Generic[_S, _T], ABC):
     @abstractmethod
     def observe(self, observer: Observer | ValueObserver[_S] | BiObserver[_S, _T],
-                times: int | None = None) -> None:
-        raise NotImplementedError
+                times: int | None = None) -> None: ...
 
     @abstractmethod
     def weak_observe(self, observer: Observer | ValueObserver[_S] | BiObserver[_S, _T],
-                     times: int | None = None) -> None:
-        raise NotImplementedError
+                     times: int | None = None) -> None: ...
 
     @abstractmethod
-    def unobserve(self, observer: Observer | ValueObserver[_S] | BiObserver[_S, _T]) -> None:
-        raise NotImplementedError
+    def unobserve(self, observer: Observer | ValueObserver[_S] | BiObserver[_S, _T]) -> None: ...
 
 
 class TriObservable(BiObservable[_S, _T], Generic[_S, _T, _U], ABC):
     @abstractmethod
     def observe(self, observer: Observer | ValueObserver[_S] | BiObserver[_S, _T] | TriObserver[_S, _T, _U],
-                times: int | None = None) -> None:
-        raise NotImplementedError
+                times: int | None = None) -> None: ...
 
     @abstractmethod
     def weak_observe(self, observer: Observer | ValueObserver[_S] | BiObserver[_S, _T] | TriObserver[_S, _T, _U],
-                     times: int | None = None) -> None:
-        raise NotImplementedError
+                     times: int | None = None) -> None: ...
 
     @abstractmethod
-    def unobserve(self, observer: Observer | ValueObserver[_S] | BiObserver[_S, _T] | TriObserver[_S, _T, _U]) -> None:
-        raise NotImplementedError
+    def unobserve(self, observer: Observer | ValueObserver[_S] | BiObserver[_S, _T] | TriObserver[_S, _T, _U]) -> None: ...
