@@ -1,4 +1,4 @@
-from spellbind.float_values import FloatVariable
+from spellbind.float_values import FloatVariable, FloatConstant
 from spellbind.int_values import IntVariable
 
 
@@ -56,3 +56,25 @@ def test_truediv_float_values():
 
     v0.value = 15.0
     assert v2.value == 3.75
+
+
+def test_truediv_constant_constant_is_constant():
+    v0 = FloatConstant(10.0)
+    v1 = FloatConstant(4.0)
+    v2 = v0 / v1
+    assert v2.value == 2.5
+    assert isinstance(v2, FloatConstant)
+
+
+def test_truediv_literal_constant_is_constant():
+    v0 = FloatConstant(10.0)
+    v2 = v0 / 4.0
+    assert v2.value == 2.5
+    assert isinstance(v2, FloatConstant)
+
+
+def test_truediv_constant_literal_is_constant():
+    v0 = FloatConstant(4.0)
+    v2 = 10.0 / v0
+    assert v2.value == 2.5
+    assert isinstance(v2, FloatConstant)

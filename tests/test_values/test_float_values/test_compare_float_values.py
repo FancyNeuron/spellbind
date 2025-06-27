@@ -1,4 +1,3 @@
-# Float Comparison Tests - Less Than
 from spellbind.float_values import FloatVariable
 from spellbind.int_values import IntVariable
 

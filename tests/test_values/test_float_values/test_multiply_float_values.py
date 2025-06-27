@@ -1,4 +1,4 @@
-from spellbind.float_values import FloatVariable
+from spellbind.float_values import FloatVariable, ManyFloatsToFloatValue, FloatConstant
 from spellbind.int_values import IntVariable
 
 
@@ -56,3 +56,53 @@ def test_multiply_int_times_float_value():
 
     v1.value = 4.0
     assert v2.value == 8.0
+
+
+def test_multiply_many_values_waterfall_style_are_combined():
+    v0 = FloatVariable(1.5)
+    v1 = FloatVariable(2.5)
+    v2 = FloatVariable(3.5)
+    v3 = FloatVariable(4.5)
+
+    v4 = v0 * v1 * v2 * v3
+    assert v4.value == 59.0625
+
+    assert isinstance(v4, ManyFloatsToFloatValue)
+    assert v4._input_values == (v0, v1, v2, v3)
+
+
+def test_multiply_many_values_grouped_are_combined():
+    v0 = FloatVariable(1.5)
+    v1 = FloatVariable(2.5)
+    v2 = FloatVariable(3.5)
+    v3 = FloatVariable(4.5)
+
+    v4 = (v0 * v1) * (v2 * v3)
+    assert v4.value == 59.0625
+
+    assert isinstance(v4, ManyFloatsToFloatValue)
+    assert v4._input_values == (v0, v1, v2, v3)
+
+
+def test_multiply_constant_by_literal_is_constant():
+    v0 = FloatConstant(1.5)
+    v1 = 2.5
+    v2 = v0 * v1
+    assert v2.value == 3.75
+    assert isinstance(v2, FloatConstant)
+
+
+def test_multiply_constant_by_constant_is_constant():
+    v0 = FloatConstant(1.5)
+    v1 = FloatConstant(2.5)
+    v2 = v0 * v1
+    assert v2.value == 3.75
+    assert isinstance(v2, FloatConstant)
+
+
+def test_multiply_literal_by_constant_is_constant():
+    v0 = 1.5
+    v1 = FloatConstant(2.5)
+    v2 = v0 * v1
+    assert v2.value == 3.75
+    assert isinstance(v2, FloatConstant)

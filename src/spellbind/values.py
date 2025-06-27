@@ -27,6 +27,10 @@ def _create_value_getter(value: Value[_S] | _S) -> Callable[[], _S]:
         return lambda: value
 
 
+class NotConstantError(Exception):
+    pass
+
+
 class Value(ValueObservable[_S], Generic[_S], ABC):
     @property
     @abstractmethod
@@ -82,6 +86,13 @@ class Value(ValueObservable[_S], Generic[_S], ABC):
     def map_to_bool(self, transformer: Callable[[_S], bool]) -> BoolValue:
         from spellbind.bool_values import OneToBoolValue
         return OneToBoolValue(transformer, self)
+
+    @property
+    def constant_value_or_raise(self) -> _S:
+        raise NotConstantError
+
+    def decompose_operands(self, operator_: Callable) -> Sequence[Value[_S] | _S]:
+        return (self,)
 
 
 class Variable(Value[_S], Generic[_S], ABC):
@@ -194,6 +205,10 @@ class Constant(Value[_S], Generic[_S]):
     def derived_from(self) -> frozenset[Value[_S]]:
         return EMPTY_FROZEN_SET
 
+    @property
+    def constant_value_or_raise(self) -> _S:
+        return self._value
+
 
 class DerivedValueBase(Value[_S], Generic[_S], ABC):
     def __init__(self, *derived_from: Value):
@@ -234,6 +249,7 @@ class OneToOneValue(DerivedValueBase[_T], Generic[_S, _T]):
 
     def __init__(self, transformer: Callable[[_S], _T], of: Value[_S]):
         self._getter = _create_value_getter(of)
+        self._of = of
         self._transformer = transformer
         super().__init__(*[v for v in (of,) if isinstance(v, Value)])
 
@@ -243,19 +259,29 @@ class OneToOneValue(DerivedValueBase[_T], Generic[_S, _T]):
 
 class ManyToOneValue(DerivedValueBase[_T], Generic[_S, _T]):
     def __init__(self, transformer: Callable[[Sequence[_S]], _T], *values: _S | Value[_S]):
-        self._value_getters = [_create_value_getter(v) for v in values]
+        self._input_values = tuple(values)
+        self._value_getters = [_create_value_getter(v) for v in self._input_values]
         self._transformer = transformer
-        super().__init__(*[v for v in values if isinstance(v, Value)])
+        super().__init__(*[v for v in self._input_values if isinstance(v, Value)])
 
     def _calculate_value(self) -> _T:
         gotten_values = [getter() for getter in self._value_getters]
         return self._transformer(gotten_values)
 
 
+class ManyToSameValue(ManyToOneValue[_S, _S], Generic[_S]):
+    def decompose_operands(self, operator_: Callable) -> Sequence[Value[_S] | _S]:
+        if operator_ == self._transformer:
+            return self._input_values
+        return (self,)
+
+
 class TwoToOneValue(DerivedValueBase[_U], Generic[_S, _T, _U]):
     def __init__(self, transformer: Callable[[_S, _T], _U],
                  first: Value[_S] | _S, second: Value[_T] | _T):
         self._transformer = transformer
+        self._of_first = first
+        self._of_second = second
         self._first_getter = _create_value_getter(first)
         self._second_getter = _create_value_getter(second)
         super().__init__(*[v for v in (first, second) if isinstance(v, Value)])
@@ -264,10 +290,20 @@ class TwoToOneValue(DerivedValueBase[_U], Generic[_S, _T, _U]):
         return self._transformer(self._first_getter(), self._second_getter())
 
 
+class TwoToSameValue(TwoToOneValue[_S, _S, _S], Generic[_S]):
+    def decompose_operands(self, operator_: Callable) -> Sequence[Value[_S] | _S]:
+        if operator_ == self._transformer:
+            return self._of_first, self._of_second
+        return (self,)
+
+
 class ThreeToOneValue(DerivedValueBase[_V], Generic[_S, _T, _U, _V]):
     def __init__(self, transformer: Callable[[_S, _T, _U], _V],
                  first: Value[_S] | _S, second: Value[_T] | _T, third: Value[_U] | _U):
         self._transformer = transformer
+        self._of_first = first
+        self._of_second = second
+        self._of_third = third
         self._first_getter = _create_value_getter(first)
         self._second_getter = _create_value_getter(second)
         self._third_getter = _create_value_getter(third)
@@ -275,6 +311,13 @@ class ThreeToOneValue(DerivedValueBase[_V], Generic[_S, _T, _U, _V]):
 
     def _calculate_value(self) -> _V:
         return self._transformer(self._first_getter(), self._second_getter(), self._third_getter())
+
+
+class ThreeToSameValue(ThreeToOneValue[_S, _S, _S, _S], Generic[_S]):
+    def decompose_operands(self, operator_: Callable) -> Sequence[Value[_S] | _S]:
+        if operator_ == self._transformer:
+            return self._of_first, self._of_second, self._of_third
+        return (self,)
 
 
 class SelectValue(ThreeToOneValue[bool, _S, _S, _S], Generic[_S]):

@@ -56,4 +56,7 @@ def test_round_float_change_comma_doesnt_change_int_value():
     rounded.observe(observer)
     assert rounded.value == 3
 
+    v0.value = 3.3
+    assert rounded.value == 3
+
     observer.assert_not_called()
