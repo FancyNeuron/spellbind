@@ -309,3 +309,15 @@ class ThreeToOneValue(DerivedValueBase[_V], Generic[_S, _T, _U, _V]):
 class SelectValue(ThreeToOneValue[bool, _S, _S, _S], Generic[_S]):
     def __init__(self, condition: BoolLike, if_true: Value[_S] | _S, if_false: Value[_S] | _S):
         super().__init__(lambda b, t, f: t if b else f, condition, if_true, if_false)
+
+
+def get_constant_of_generic_like(value: _S | Value[_S]) -> _S:
+    if isinstance(value, Value):
+        return value.constant_value_or_raise
+    return value
+
+
+def decompose_operands_of_generic_like(operator_: Callable, value: _S | Value[_S]) -> Sequence[_S | Value[_S]]:
+    if isinstance(value, Value):
+        return value.decompose_operands(operator_)
+    return (value,)

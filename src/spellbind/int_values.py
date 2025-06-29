@@ -11,7 +11,7 @@ from spellbind.float_values import FloatValue, \
     CompareNumbersValues
 from spellbind.functions import clamp_int, multiply_all_ints, multiply_all_floats
 from spellbind.values import Value, SimpleVariable, TwoToOneValue, OneToOneValue, Constant, \
-    ThreeToOneValue, SelectValue, NotConstantError, ManyToSameValue
+    ThreeToOneValue, SelectValue, NotConstantError, ManyToSameValue, get_constant_of_generic_like, decompose_operands_of_generic_like
 
 IntLike = int | Value[int]
 FloatLike = IntLike | float | FloatValue
@@ -159,8 +159,8 @@ class IntValue(Value[int], ABC):
     @classmethod
     def derive_two(cls, operator_: Callable[[int, int], int], left: IntLike, right: IntLike) -> IntValue:
         try:
-            left_value = _get_constant(left)
-            right_value = _get_constant(right)
+            left_value = get_constant_of_generic_like(left)
+            right_value = get_constant_of_generic_like(right)
         except NotConstantError:
             return TwoToIntValue(operator_, left, right)
         else:
@@ -170,9 +170,9 @@ class IntValue(Value[int], ABC):
     def derive_three(cls, operator_: Callable[[int, int, int], int],
                      first: IntLike, second: IntLike, third: IntLike) -> IntValue:
         try:
-            constant_first = _get_constant(first)
-            constant_second = _get_constant(second)
-            constant_third = _get_constant(third)
+            constant_first = get_constant_of_generic_like(first)
+            constant_second = get_constant_of_generic_like(second)
+            constant_third = get_constant_of_generic_like(third)
         except NotConstantError:
             return ThreeToIntValue(operator_, first, second, third)
         else:
@@ -181,10 +181,10 @@ class IntValue(Value[int], ABC):
     @classmethod
     def derive_many(cls, operator_: Callable[[Sequence[int]], int], *values: IntLike, is_associative: bool = False) -> IntValue:
         try:
-            constant_values = [_get_constant(v) for v in values]
+            constant_values = [get_constant_of_generic_like(v) for v in values]
         except NotConstantError:
             if is_associative:
-                flattened = tuple(item for v in values for item in _decompose_operands(operator_, v))
+                flattened = tuple(item for v in values for item in decompose_operands_of_generic_like(operator_, v))
                 return ManyIntsToIntValue(operator_, *flattened)
             else:
                 return ManyIntsToIntValue(operator_, *values)
@@ -226,18 +226,6 @@ class IntConstant(IntValue, Constant[int]):
 for _value in [*range(101)]:
     IntConstant._cache[_value] = IntConstant(_value)
     IntConstant._cache[-_value] = IntConstant(-_value)
-
-
-def _get_constant(value: _S | Value[_S]) -> _S:
-    if isinstance(value, Value):
-        return value.constant_value_or_raise
-    return value
-
-
-def _decompose_operands(operator_: Callable, value: _S | Value[_S]) -> Sequence[_S | Value[_S]]:
-    if isinstance(value, Value):
-        return value.decompose_operands(operator_)
-    return (value,)
 
 
 class IntVariable(SimpleVariable[int], IntValue):
