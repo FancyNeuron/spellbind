@@ -1,24 +1,25 @@
 from __future__ import annotations
 
-import math
 import operator
 from abc import ABC
-from typing import overload, Generic
+from typing import overload, Generic, Callable, Sequence
 
 from typing_extensions import Self, TypeVar
 
 from spellbind.bool_values import BoolValue, BoolLike
-from spellbind.float_values import FloatValue, MultiplyFloatValues, DivideValues, SubtractFloatValues, \
-    AddFloatValues, CompareNumbersValues
-from spellbind.functions import clamp_int, multiply_all_ints
-from spellbind.values import Value, ManyToOneValue, SimpleVariable, TwoToOneValue, OneToOneValue, Constant, \
-    ThreeToOneValue, SelectValue
+from spellbind.float_values import FloatValue, \
+    CompareNumbersValues
+from spellbind.functions import clamp_int, multiply_all_ints, multiply_all_floats
+from spellbind.values import Value, SimpleVariable, TwoToOneValue, OneToOneValue, Constant, \
+    ThreeToOneValue, SelectValue, NotConstantError, ManyToSameValue
 
 IntLike = int | Value[int]
 FloatLike = IntLike | float | FloatValue
 
 
 _S = TypeVar('_S')
+_T = TypeVar('_T')
+_U = TypeVar('_U')
 
 
 class IntValue(Value[int], ABC):
@@ -30,8 +31,8 @@ class IntValue(Value[int], ABC):
 
     def __add__(self, other: FloatLike) -> IntValue | FloatValue:
         if isinstance(other, (float, FloatValue)):
-            return AddFloatValues(self, other)
-        return AddIntValues(self, other)
+            return FloatValue.derive_many(sum, self, other, is_associative=True)
+        return IntValue.derive_many(sum, self, other, is_associative=True)
 
     @overload
     def __radd__(self, other: int) -> IntValue: ...
@@ -41,8 +42,8 @@ class IntValue(Value[int], ABC):
 
     def __radd__(self, other: int | float) -> IntValue | FloatValue:
         if isinstance(other, float):
-            return AddFloatValues(other, self)
-        return AddIntValues(other, self)
+            return FloatValue.derive_many(sum, other, self, is_associative=True)
+        return IntValue.derive_many(sum, other, self, is_associative=True)
 
     @overload
     def __sub__(self, other: IntLike) -> IntValue: ...
@@ -52,8 +53,8 @@ class IntValue(Value[int], ABC):
 
     def __sub__(self, other: FloatLike) -> IntValue | FloatValue:
         if isinstance(other, (float, FloatValue)):
-            return SubtractFloatValues(self, other)
-        return SubtractIntValues(self, other)
+            return FloatValue.derive_two(operator.sub, self, other)
+        return IntValue.derive_two(operator.sub, self, other)
 
     @overload
     def __rsub__(self, other: int) -> IntValue: ...
@@ -63,8 +64,8 @@ class IntValue(Value[int], ABC):
 
     def __rsub__(self, other: int | float) -> IntValue | FloatValue:
         if isinstance(other, float):
-            return SubtractFloatValues(other, self)
-        return SubtractIntValues(other, self)
+            return FloatValue.derive_two(operator.sub, other, self)
+        return IntValue.derive_two(operator.sub, other, self)
 
     @overload
     def __mul__(self, other: IntLike) -> IntValue: ...
@@ -74,8 +75,8 @@ class IntValue(Value[int], ABC):
 
     def __mul__(self, other: FloatLike) -> IntValue | FloatValue:
         if isinstance(other, (float, FloatValue)):
-            return MultiplyFloatValues(self, other)
-        return MultiplyIntValues(self, other)
+            return FloatValue.derive_many(multiply_all_floats, self, other, is_associative=True)
+        return IntValue.derive_many(multiply_all_ints, self, other, is_associative=True)
 
     @overload
     def __rmul__(self, other: int) -> IntValue: ...
@@ -85,32 +86,32 @@ class IntValue(Value[int], ABC):
 
     def __rmul__(self, other: int | float) -> IntValue | FloatValue:
         if isinstance(other, float):
-            return MultiplyFloatValues(other, self)
-        return MultiplyIntValues(other, self)
+            return FloatValue.derive_many(multiply_all_floats, other, self, is_associative=True)
+        return IntValue.derive_many(multiply_all_ints, other, self, is_associative=True)
 
     def __truediv__(self, other: FloatLike) -> FloatValue:
-        return DivideValues(self, other)
+        return FloatValue.derive_two(operator.truediv, self, other)
 
     def __rtruediv__(self, other: int | float) -> FloatValue:
-        return DivideValues(other, self)
+        return FloatValue.derive_two(operator.truediv, other, self)
 
     def __floordiv__(self, other: IntLike) -> IntValue:
-        return FloorDivideIntValues(self, other)
+        return IntValue.derive_two(operator.floordiv, self, other)
 
     def __rfloordiv__(self, other: int) -> IntValue:
-        return FloorDivideIntValues(other, self)
+        return IntValue.derive_two(operator.floordiv, other, self)
 
     def __pow__(self, other: IntLike) -> IntValue:
-        return PowerIntValues(self, other)
+        return IntValue.derive_two(operator.pow, self, other)
 
     def __rpow__(self, other: int) -> IntValue:
-        return PowerIntValues(other, self)
+        return IntValue.derive_two(operator.pow, other, self)
 
     def __mod__(self, other: IntLike) -> IntValue:
-        return ModuloIntValues(self, other)
+        return IntValue.derive_two(operator.mod, self, other)
 
     def __rmod__(self, other: int) -> IntValue:
-        return ModuloIntValues(other, self)
+        return IntValue.derive_two(operator.mod, other, self)
 
     def __abs__(self) -> IntValue:
         return AbsIntValue(self)
@@ -134,89 +135,137 @@ class IntValue(Value[int], ABC):
         return self
 
     def clamp(self, min_value: IntLike, max_value: IntLike) -> IntValue:
-        return ClampIntValue(self, min_value, max_value)
+        return IntValue.derive_three(clamp_int, self, min_value, max_value)
+
+    @classmethod
+    def min(cls, *values: IntLike) -> IntValue:
+        return IntValue.derive_many(min, *values, is_associative=True)
+
+    @classmethod
+    def max(cls, *values: IntLike) -> IntValue:
+        return IntValue.derive_many(max, *values, is_associative=True)
+
+    @classmethod
+    def derive_one(cls, operator_: Callable[[_S], int], value: _S | Value[_S]) -> IntValue:
+        if not isinstance(value, Value):
+            return IntConstant.of(operator_(value))
+        try:
+            constant_value = value.constant_value_or_raise
+        except NotConstantError:
+            return OneToIntValue(operator_, value)
+        else:
+            return IntConstant.of(operator_(constant_value))
+
+    @classmethod
+    def derive_two(cls, operator_: Callable[[int, int], int], left: IntLike, right: IntLike) -> IntValue:
+        try:
+            left_value = _get_constant(left)
+            right_value = _get_constant(right)
+        except NotConstantError:
+            return TwoToIntValue(operator_, left, right)
+        else:
+            return IntConstant.of(operator_(left_value, right_value))
+
+    @classmethod
+    def derive_three(cls, operator_: Callable[[int, int, int], int],
+                     first: IntLike, second: IntLike, third: IntLike) -> IntValue:
+        try:
+            constant_first = _get_constant(first)
+            constant_second = _get_constant(second)
+            constant_third = _get_constant(third)
+        except NotConstantError:
+            return ThreeToIntValue(operator_, first, second, third)
+        else:
+            return IntConstant.of(operator_(constant_first, constant_second, constant_third))
+
+    @classmethod
+    def derive_many(cls, operator_: Callable[[Sequence[int]], int], *values: IntLike, is_associative: bool = False) -> IntValue:
+        try:
+            constant_values = [_get_constant(v) for v in values]
+        except NotConstantError:
+            if is_associative:
+                flattened = tuple(item for v in values for item in _decompose_operands(operator_, v))
+                return ManyIntsToIntValue(operator_, *flattened)
+            else:
+                return ManyIntsToIntValue(operator_, *values)
+        else:
+            return IntConstant.of(operator_(constant_values))
 
 
 class OneToIntValue(Generic[_S], OneToOneValue[_S, int], IntValue):
     pass
 
 
-class IntConstant(IntValue, Constant[int]):
+class TwoToIntValue(Generic[_S, _T], TwoToOneValue[_S, _T, int], IntValue):
     pass
+
+
+class ThreeToIntValue(Generic[_S, _T, _U], ThreeToOneValue[_S, _T, _U, int], IntValue):
+    pass
+
+
+class IntConstant(IntValue, Constant[int]):
+    _cache: dict[int, IntConstant] = {}
+
+    @classmethod
+    def of(cls, value: int) -> IntConstant:
+        try:
+            return cls._cache[value]
+        except KeyError:
+            return IntConstant(value)
+
+    def __abs__(self):
+        if self.value >= 0:
+            return self
+        return IntConstant.of(-self.value)
+
+    def __neg__(self):
+        return IntConstant.of(-self.value)
+
+
+for _value in [*range(101)]:
+    IntConstant._cache[_value] = IntConstant(_value)
+    IntConstant._cache[-_value] = IntConstant(-_value)
+
+
+def _get_constant(value: _S | Value[_S]) -> _S:
+    if isinstance(value, Value):
+        return value.constant_value_or_raise
+    return value
+
+
+def _decompose_operands(operator_: Callable, value: _S | Value[_S]) -> Sequence[_S | Value[_S]]:
+    if isinstance(value, Value):
+        return value.decompose_operands(operator_)
+    return (value,)
 
 
 class IntVariable(SimpleVariable[int], IntValue):
     pass
 
 
-class MaxIntValues(ManyToOneValue[int, int], IntValue):
-    def __init__(self, *values: IntLike):
-        super().__init__(max, *values)
-
-
-class MinIntValues(ManyToOneValue[int, int], IntValue):
-    def __init__(self, *values: IntLike):
-        super().__init__(min, *values)
-
-
-class AddIntValues(ManyToOneValue[int, int], IntValue):
-    def __init__(self, *values: IntLike):
-        super().__init__(sum, *values)
-
-
-class SubtractIntValues(TwoToOneValue[int, int, int], IntValue):
-    def __init__(self, left: IntLike, right: IntLike):
-        super().__init__(operator.sub, left, right)
-
-
-class MultiplyIntValues(ManyToOneValue[int, int], IntValue):
-    def __init__(self, *values: IntLike):
-        super().__init__(multiply_all_ints, *values)
-
-
-class FloorDivideIntValues(TwoToOneValue[int, int, int], IntValue):
-    def __init__(self, left: IntLike, right: IntLike):
-        super().__init__(operator.floordiv, left, right)
-
-
-class PowerIntValues(TwoToOneValue[int, int, int], IntValue):
-    def __init__(self, left: IntLike, right: IntLike):
-        super().__init__(operator.pow, left, right)
-
-
-class ModuloIntValues(TwoToOneValue[int, int, int], IntValue):
-    def __init__(self, left: IntLike, right: IntLike):
-        super().__init__(operator.mod, left, right)
+class ManyIntsToIntValue(ManyToSameValue[int], IntValue):
+    def __init__(self, operator_: Callable[[Sequence[int]], int], *values: IntLike):
+        super().__init__(operator_, *values)
 
 
 class AbsIntValue(OneToOneValue[int, int], IntValue):
     def __init__(self, value: Value[int]):
         super().__init__(abs, value)
 
+    def __abs__(self) -> Self:
+        return self
+
 
 class NegateIntValue(OneToOneValue[int, int], IntValue):
     def __init__(self, value: Value[int]):
         super().__init__(operator.neg, value)
 
-
-class FloorFloatValue(OneToOneValue[float, int], IntValue):
-    def __init__(self, value: Value[float]):
-        super().__init__(math.floor, value)
-
-
-class CeilFloatValue(OneToOneValue[float, int], IntValue):
-    def __init__(self, value: Value[float]):
-        super().__init__(math.ceil, value)
-
-
-class RoundFloatToIntValue(OneToOneValue[float, int], IntValue):
-    def __init__(self, value: Value[float]):
-        super().__init__(round, value)
-
-
-class ClampIntValue(ThreeToOneValue[int, int, int, int], IntValue):
-    def __init__(self, value: IntLike, min_value: IntLike, max_value: IntLike) -> None:
-        super().__init__(clamp_int, value, min_value, max_value)
+    def __neg__(self) -> IntValue:
+        of = self._of
+        if isinstance(of, IntValue):
+            return of
+        return super().__neg__()
 
 
 class SelectIntValue(SelectValue[int], IntValue):

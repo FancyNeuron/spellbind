@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 import operator
 from abc import ABC
 from typing import Generic, Callable, Sequence, TypeVar, overload
@@ -9,8 +10,8 @@ from typing_extensions import TYPE_CHECKING
 
 from spellbind.bool_values import BoolValue, BoolLike
 from spellbind.functions import clamp_float, multiply_all_floats
-from spellbind.values import Value, SimpleVariable, OneToOneValue, DerivedValueBase, Constant, TwoToOneValue, \
-    SelectValue, NotConstantError
+from spellbind.values import Value, SimpleVariable, OneToOneValue, DerivedValueBase, Constant, SelectValue, \
+    NotConstantError
 
 if TYPE_CHECKING:
     from spellbind.int_values import IntValue, IntLike  # pragma: no cover
@@ -72,12 +73,14 @@ class FloatValue(Value[float], ABC):
         return AbsFloatValue(self)
 
     def floor(self) -> IntValue:
-        from spellbind.int_values import FloorFloatValue
-        return FloorFloatValue(self)
+        from spellbind.int_values import IntValue
+        floor_fun: Callable[[float], int] = math.floor
+        return IntValue.derive_one(floor_fun, self)
 
     def ceil(self) -> IntValue:
-        from spellbind.int_values import CeilFloatValue
-        return CeilFloatValue(self)
+        from spellbind.int_values import IntValue
+        ceil_fun: Callable[[float], int] = math.ceil
+        return IntValue.derive_one(ceil_fun, self)
 
     @overload
     def round(self) -> IntValue: ...
@@ -87,9 +90,11 @@ class FloatValue(Value[float], ABC):
 
     def round(self, ndigits: IntLike | None = None) -> FloatValue | IntValue:
         if ndigits is None:
-            from spellbind.int_values import RoundFloatToIntValue
-            return RoundFloatToIntValue(self)
-        return RoundFloatValue(self, ndigits)
+            from spellbind.int_values import IntValue
+            round_to_int_fun: Callable[[float], int] = round
+            return IntValue.derive_one(round_to_int_fun, self)
+        round_fun: Callable[[float, int], float] = round
+        return FloatValue.derive_two(round_fun, self, ndigits)
 
     def __lt__(self, other: FloatLike) -> BoolValue:
         return CompareNumbersValues(self, other, operator.lt)
@@ -128,7 +133,24 @@ class FloatValue(Value[float], ABC):
         return cls.derive_many(_average_float, *values)
 
     @classmethod
-    def derive_two(cls, operator_: Callable[[float, float], float], first: FloatLike, second: FloatLike) -> FloatValue:
+    def derive_one(cls, transformer: Callable[[float], float], of: FloatLike) -> FloatValue:
+        try:
+            constant_value = _get_constant_float(of)
+        except NotConstantError:
+            return OneFloatToFloatValue(transformer, of)
+        else:
+            return FloatConstant.of(transformer(constant_value))
+
+    @classmethod
+    @overload
+    def derive_two(cls, operator_: Callable[[float, int], float], first: FloatLike, second: IntLike) -> FloatValue: ...
+
+    @classmethod
+    @overload
+    def derive_two(cls, operator_: Callable[[float, float], float], first: FloatLike, second: FloatLike) -> FloatValue: ...
+
+    @classmethod
+    def derive_two(cls, operator_, first, second) -> FloatValue:
         try:
             constant_first = _get_constant_float(first)
             constant_second = _get_constant_float(second)
@@ -296,11 +318,6 @@ class ThreeFloatToFloatValue(ThreeFloatToOneValue[float], FloatValue):
         if self._transformer == operator_:
             return self._of_first, self._of_second, self._of_third
         return (self,)
-
-
-class RoundFloatValue(TwoToOneValue[float, int, float], FloatValue):
-    def __init__(self, value: FloatValue, ndigits: IntLike):
-        super().__init__(round, value, ndigits)
 
 
 class AbsFloatValue(OneFloatToOneValue[float], FloatValue):

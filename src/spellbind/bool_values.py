@@ -102,7 +102,18 @@ class XorBoolValues(TwoToOneValue[bool, bool, bool], BoolValue):
 
 
 class BoolConstant(BoolValue, Constant[bool]):
-    pass
+    @classmethod
+    def of(cls, value: bool) -> BoolConstant:
+        if value:
+            return TRUE
+        return FALSE
+
+    def logical_not(self) -> BoolConstant:
+        return BoolConstant.of(not self.value)
+
+    @property
+    def constant_value_or_raise(self) -> bool:
+        return self.value
 
 
 class BoolVariable(SimpleVariable[bool], BoolValue):

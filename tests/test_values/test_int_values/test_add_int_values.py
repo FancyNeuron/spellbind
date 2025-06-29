@@ -1,7 +1,7 @@
 import gc
 
 from spellbind.float_values import FloatVariable
-from spellbind.int_values import IntVariable
+from spellbind.int_values import IntVariable, ManyIntsToIntValue, IntConstant
 
 
 def test_add_int_values_values():
@@ -110,3 +110,53 @@ def test_bind_and_unbind_to_added_int_variables():
     variable.unbind()
     v0.value = 10
     assert variable.value == 7
+
+
+def test_add_many_values_waterfall_style_are_combined():
+    v0 = IntVariable(1)
+    v1 = IntVariable(2)
+    v2 = IntVariable(3)
+    v3 = IntVariable(4)
+
+    v4 = v0 + v1 + v2 + v3
+    assert v4.value == 10.0
+
+    assert isinstance(v4, ManyIntsToIntValue)
+    assert v4._input_values == (v0, v1, v2, v3)
+
+
+def test_add_many_values_grouped_are_combined():
+    v0 = IntVariable(1)
+    v1 = IntVariable(2)
+    v2 = IntVariable(3)
+    v3 = IntVariable(4)
+
+    v4 = (v0 + v1) + (v2 + v3)
+    assert v4.value == 10.0
+
+    assert isinstance(v4, ManyIntsToIntValue)
+    assert v4._input_values == (v0, v1, v2, v3)
+
+
+def test_add_constant_to_literal_is_constant():
+    v0 = IntConstant(1)
+    v1 = 2
+    v2 = v0 + v1
+    assert v2.value == 3
+    assert isinstance(v2, IntConstant)
+
+
+def test_add_constant_to_constant_is_constant():
+    v0 = IntConstant(1)
+    v1 = IntConstant(2)
+    v2 = v0 + v1
+    assert v2.value == 3
+    assert isinstance(v2, IntConstant)
+
+
+def test_add_literal_to_constant_is_constant():
+    v0 = 1
+    v1 = IntConstant(2)
+    v2 = v0 + v1
+    assert v2.value == 3.0
+    assert isinstance(v2, IntConstant)

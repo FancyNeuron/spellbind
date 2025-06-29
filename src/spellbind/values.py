@@ -290,13 +290,6 @@ class TwoToOneValue(DerivedValueBase[_U], Generic[_S, _T, _U]):
         return self._transformer(self._first_getter(), self._second_getter())
 
 
-class TwoToSameValue(TwoToOneValue[_S, _S, _S], Generic[_S]):
-    def decompose_operands(self, operator_: Callable) -> Sequence[Value[_S] | _S]:
-        if operator_ == self._transformer:
-            return self._of_first, self._of_second
-        return (self,)
-
-
 class ThreeToOneValue(DerivedValueBase[_V], Generic[_S, _T, _U, _V]):
     def __init__(self, transformer: Callable[[_S, _T, _U], _V],
                  first: Value[_S] | _S, second: Value[_T] | _T, third: Value[_U] | _U):
@@ -311,13 +304,6 @@ class ThreeToOneValue(DerivedValueBase[_V], Generic[_S, _T, _U, _V]):
 
     def _calculate_value(self) -> _V:
         return self._transformer(self._first_getter(), self._second_getter(), self._third_getter())
-
-
-class ThreeToSameValue(ThreeToOneValue[_S, _S, _S, _S], Generic[_S]):
-    def decompose_operands(self, operator_: Callable) -> Sequence[Value[_S] | _S]:
-        if operator_ == self._transformer:
-            return self._of_first, self._of_second, self._of_third
-        return (self,)
 
 
 class SelectValue(ThreeToOneValue[bool, _S, _S, _S], Generic[_S]):
