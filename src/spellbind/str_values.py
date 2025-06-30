@@ -1,12 +1,10 @@
 from __future__ import annotations
 
 from abc import ABC
-from typing import Any, Generic, TypeVar, Callable, Sequence, Iterable, TYPE_CHECKING
+from typing import Any, Generic, TypeVar, Callable, Iterable, TYPE_CHECKING
 
-from spellbind.bool_values import BoolLike
-from spellbind.values import Value, OneToOneValue, SimpleVariable, Constant, SelectValue, \
-    ManyToSameValue, NotConstantError, get_constant_of_generic_like, decompose_operands_of_generic_like
-
+from spellbind.values import Value, OneToOneValue, SimpleVariable, Constant, \
+    ManyToSameValue, ThreeToOneValue
 
 if TYPE_CHECKING:
     from spellbind.int_values import IntValue, IntConstant  # pragma: no cover
@@ -15,6 +13,8 @@ if TYPE_CHECKING:
 StrLike = str | Value[str]
 
 _S = TypeVar('_S')
+_T = TypeVar('_T')
+_U = TypeVar('_U')
 _JOIN_FUNCTIONS: dict[str, Callable[[Iterable[str]], str]] = {}
 
 
@@ -33,41 +33,47 @@ _join_strs = _get_join_function("")
 
 class StrValue(Value[str], ABC):
     def __add__(self, other: StrLike) -> StrValue:
-        return StrValue.derive_many(_join_strs, self, other, is_associative=True)
+        return StrValue.derive_from_many(_join_strs, self, other, is_associative=True)
 
     def __radd__(self, other: StrLike) -> StrValue:
-        return StrValue.derive_many(_join_strs, other, self, is_associative=True)
+        return StrValue.derive_from_many(_join_strs, other, self, is_associative=True)
 
     @property
     def length(self) -> IntValue:
         from spellbind.int_values import IntValue
         str_length: Callable[[str], int] = len
-        return IntValue.derive_one(str_length, self)
+        return IntValue.derive_from_one(str_length, self)
 
     def to_str(self) -> StrValue:
         return self
 
     @classmethod
-    def derive_many(cls, operator_: Callable[[Iterable[str]], str], *values: StrLike,
-                    is_associative: bool = False) -> StrValue:
-        try:
-            constant_values = [get_constant_of_generic_like(v) for v in values]
-        except NotConstantError:
-            if is_associative:
-                flattened = tuple(item for v in values for item in decompose_operands_of_generic_like(operator_, v))
-                return ManyStrsToStrValue(operator_, *flattened)
-            else:
-                return ManyStrsToStrValue(operator_, *values)
-        else:
-            return StrConstant.of(operator_(constant_values))
+    def derive_from_three(cls, transformer: Callable[[_S, _T, _U], str],
+                          first: _S | Value[_S], second: _T | Value[_T], third: _U | Value[_U]) -> StrValue:
+        return Value.derive_from_three_with_factory(
+            transformer,
+            first, second, third,
+            create_value=ThreeToStrValue.create,
+            create_constant=StrConstant.of,
+        )
+
+    @classmethod
+    def derive_from_many(cls, transformer: Callable[[Iterable[str]], str], *values: StrLike, is_associative: bool = False) -> StrValue:
+        return Value.derive_from_many_with_factory(
+            transformer,
+            *values,
+            create_value=ManyStrsToStrValue.create,
+            create_constant=StrConstant.of,
+            is_associative=is_associative,
+        )
 
 
 def concatenate(*values: StrLike) -> StrValue:
-    return StrValue.derive_many(_join_strs, *values, is_associative=True)
+    return StrValue.derive_from_many(_join_strs, *values, is_associative=True)
 
 
 def join(separator: str = "", *values: StrLike) -> StrValue:
-    return StrValue.derive_many(_get_join_function(separator), *values, is_associative=True)
+    return StrValue.derive_from_many(_get_join_function(separator), *values, is_associative=True)
 
 
 class OneToStrValue(OneToOneValue[_S, str], StrValue, Generic[_S]):
@@ -111,15 +117,18 @@ class StrVariable(SimpleVariable[str], StrValue):
 
 
 class ManyStrsToStrValue(ManyToSameValue[str], StrValue):
-    def __init__(self, transformer: Callable[[Sequence[str]], str], *values: StrLike):
-        super().__init__(transformer, *values)
+    @staticmethod
+    def create(transformer: Callable[[Iterable[str]], str], values: Iterable[StrLike]) -> StrValue:
+        return ManyStrsToStrValue(transformer, *values)
+
+
+class ThreeToStrValue(ThreeToOneValue[_S, _T, _U, str], StrValue, Generic[_S, _T, _U]):
+    @staticmethod
+    def create(transformer: Callable[[_S, _T, _U], str],
+               first: _S | Value[_S], second: _T | Value[_T], third: _U | Value[_U]) -> StrValue:
+        return ThreeToStrValue(transformer, first, second, third)
 
 
 class ToStrValue(OneToOneValue[Any, str], StrValue):
     def __init__(self, value: Value[Any]):
         super().__init__(str, value)
-
-
-class SelectStrValue(SelectValue[str], StrValue):
-    def __init__(self, condition: BoolLike, if_true: StrLike, if_false: StrLike):
-        super().__init__(condition, if_true, if_false)

@@ -22,10 +22,10 @@ def test_int_const_repr():
 
 def test_derive_int_constant_returns_constant():
     v0 = IntConstant(4)
-    derived = IntValue.derive_one(lambda x: x + 1, v0)
+    derived = IntValue.derive_from_one(lambda x: x + 1, v0)
     assert derived.constant_value_or_raise == 5
 
 
 def test_derive_int_literal_returns_constant():
-    derived = IntValue.derive_one(lambda x: x + 1, 4)
+    derived = IntValue.derive_from_one(lambda x: x + 1, 4)
     assert derived.constant_value_or_raise == 5

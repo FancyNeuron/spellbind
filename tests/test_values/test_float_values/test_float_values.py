@@ -35,10 +35,10 @@ def test_add_int_values_garbage_collected():
 
 def test_derive_float_constant_returns_constant():
     v0 = FloatConstant(4.5)
-    derived = FloatValue.derive_one(lambda x: x + 1.0, v0)
+    derived = FloatValue.derive_from_one(lambda x: x + 1.0, v0)
     assert derived.constant_value_or_raise == 5.5
 
 
 def test_derive_float_literal_returns_constant():
-    derived = FloatValue.derive_one(lambda x: x + 1.0, 4.5)
+    derived = FloatValue.derive_from_one(lambda x: x + 1.0, 4.5)
     assert derived.constant_value_or_raise == 5.5

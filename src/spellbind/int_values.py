@@ -2,16 +2,16 @@ from __future__ import annotations
 
 import operator
 from abc import ABC
-from typing import overload, Generic, Callable, Sequence
+from typing import overload, Generic, Callable, Iterable
 
 from typing_extensions import Self, TypeVar
 
-from spellbind.bool_values import BoolValue, BoolLike
+from spellbind.bool_values import BoolValue
 from spellbind.float_values import FloatValue, \
     CompareNumbersValues
-from spellbind.functions import clamp_int, multiply_all_ints, multiply_all_floats
+from spellbind.functions import _clamp_int, _multiply_all_ints, _multiply_all_floats
 from spellbind.values import Value, SimpleVariable, TwoToOneValue, OneToOneValue, Constant, \
-    ThreeToOneValue, SelectValue, NotConstantError, ManyToSameValue, get_constant_of_generic_like, decompose_operands_of_generic_like
+    ThreeToOneValue, NotConstantError, ManyToSameValue, get_constant_of_generic_like
 
 IntLike = int | Value[int]
 FloatLike = IntLike | float | FloatValue
@@ -31,8 +31,8 @@ class IntValue(Value[int], ABC):
 
     def __add__(self, other: FloatLike) -> IntValue | FloatValue:
         if isinstance(other, (float, FloatValue)):
-            return FloatValue.derive_many(sum, self, other, is_associative=True)
-        return IntValue.derive_many(sum, self, other, is_associative=True)
+            return FloatValue.derive_from_many(sum, self, other, is_associative=True)
+        return IntValue.derive_from_many(sum, self, other, is_associative=True)
 
     @overload
     def __radd__(self, other: int) -> IntValue: ...
@@ -42,8 +42,8 @@ class IntValue(Value[int], ABC):
 
     def __radd__(self, other: int | float) -> IntValue | FloatValue:
         if isinstance(other, float):
-            return FloatValue.derive_many(sum, other, self, is_associative=True)
-        return IntValue.derive_many(sum, other, self, is_associative=True)
+            return FloatValue.derive_from_many(sum, other, self, is_associative=True)
+        return IntValue.derive_from_many(sum, other, self, is_associative=True)
 
     @overload
     def __sub__(self, other: IntLike) -> IntValue: ...
@@ -53,8 +53,8 @@ class IntValue(Value[int], ABC):
 
     def __sub__(self, other: FloatLike) -> IntValue | FloatValue:
         if isinstance(other, (float, FloatValue)):
-            return FloatValue.derive_two(operator.sub, self, other)
-        return IntValue.derive_two(operator.sub, self, other)
+            return FloatValue.derive_from_two(operator.sub, self, other)
+        return IntValue.derive_from_two(operator.sub, self, other)
 
     @overload
     def __rsub__(self, other: int) -> IntValue: ...
@@ -64,8 +64,8 @@ class IntValue(Value[int], ABC):
 
     def __rsub__(self, other: int | float) -> IntValue | FloatValue:
         if isinstance(other, float):
-            return FloatValue.derive_two(operator.sub, other, self)
-        return IntValue.derive_two(operator.sub, other, self)
+            return FloatValue.derive_from_two(operator.sub, other, self)
+        return IntValue.derive_from_two(operator.sub, other, self)
 
     @overload
     def __mul__(self, other: IntLike) -> IntValue: ...
@@ -75,8 +75,8 @@ class IntValue(Value[int], ABC):
 
     def __mul__(self, other: FloatLike) -> IntValue | FloatValue:
         if isinstance(other, (float, FloatValue)):
-            return FloatValue.derive_many(multiply_all_floats, self, other, is_associative=True)
-        return IntValue.derive_many(multiply_all_ints, self, other, is_associative=True)
+            return FloatValue.derive_from_many(_multiply_all_floats, self, other, is_associative=True)
+        return IntValue.derive_from_many(_multiply_all_ints, self, other, is_associative=True)
 
     @overload
     def __rmul__(self, other: int) -> IntValue: ...
@@ -86,32 +86,32 @@ class IntValue(Value[int], ABC):
 
     def __rmul__(self, other: int | float) -> IntValue | FloatValue:
         if isinstance(other, float):
-            return FloatValue.derive_many(multiply_all_floats, other, self, is_associative=True)
-        return IntValue.derive_many(multiply_all_ints, other, self, is_associative=True)
+            return FloatValue.derive_from_many(_multiply_all_floats, other, self, is_associative=True)
+        return IntValue.derive_from_many(_multiply_all_ints, other, self, is_associative=True)
 
     def __truediv__(self, other: FloatLike) -> FloatValue:
-        return FloatValue.derive_two(operator.truediv, self, other)
+        return FloatValue.derive_from_two(operator.truediv, self, other)
 
     def __rtruediv__(self, other: int | float) -> FloatValue:
-        return FloatValue.derive_two(operator.truediv, other, self)
+        return FloatValue.derive_from_two(operator.truediv, other, self)
 
     def __floordiv__(self, other: IntLike) -> IntValue:
-        return IntValue.derive_two(operator.floordiv, self, other)
+        return IntValue.derive_from_two(operator.floordiv, self, other)
 
     def __rfloordiv__(self, other: int) -> IntValue:
-        return IntValue.derive_two(operator.floordiv, other, self)
+        return IntValue.derive_from_two(operator.floordiv, other, self)
 
     def __pow__(self, other: IntLike) -> IntValue:
-        return IntValue.derive_two(operator.pow, self, other)
+        return IntValue.derive_from_two(operator.pow, self, other)
 
     def __rpow__(self, other: int) -> IntValue:
-        return IntValue.derive_two(operator.pow, other, self)
+        return IntValue.derive_from_two(operator.pow, other, self)
 
     def __mod__(self, other: IntLike) -> IntValue:
-        return IntValue.derive_two(operator.mod, self, other)
+        return IntValue.derive_from_two(operator.mod, self, other)
 
     def __rmod__(self, other: int) -> IntValue:
-        return IntValue.derive_two(operator.mod, other, self)
+        return IntValue.derive_from_two(operator.mod, other, self)
 
     def __abs__(self) -> IntValue:
         return AbsIntValue(self)
@@ -135,10 +135,10 @@ class IntValue(Value[int], ABC):
         return self
 
     def clamp(self, min_value: IntLike, max_value: IntLike) -> IntValue:
-        return IntValue.derive_three(clamp_int, self, min_value, max_value)
+        return IntValue.derive_from_three(_clamp_int, self, min_value, max_value)
 
     @classmethod
-    def derive_one(cls, operator_: Callable[[_S], int], value: _S | Value[_S]) -> IntValue:
+    def derive_from_one(cls, operator_: Callable[[_S], int], value: _S | Value[_S]) -> IntValue:
         if not isinstance(value, Value):
             return IntConstant.of(operator_(value))
         try:
@@ -149,7 +149,7 @@ class IntValue(Value[int], ABC):
             return IntConstant.of(operator_(constant_value))
 
     @classmethod
-    def derive_two(cls, operator_: Callable[[int, int], int], left: IntLike, right: IntLike) -> IntValue:
+    def derive_from_two(cls, operator_: Callable[[int, int], int], left: IntLike, right: IntLike) -> IntValue:
         try:
             left_value = get_constant_of_generic_like(left)
             right_value = get_constant_of_generic_like(right)
@@ -159,37 +159,32 @@ class IntValue(Value[int], ABC):
             return IntConstant.of(operator_(left_value, right_value))
 
     @classmethod
-    def derive_three(cls, operator_: Callable[[int, int, int], int],
-                     first: IntLike, second: IntLike, third: IntLike) -> IntValue:
-        try:
-            constant_first = get_constant_of_generic_like(first)
-            constant_second = get_constant_of_generic_like(second)
-            constant_third = get_constant_of_generic_like(third)
-        except NotConstantError:
-            return ThreeToIntValue(operator_, first, second, third)
-        else:
-            return IntConstant.of(operator_(constant_first, constant_second, constant_third))
+    def derive_from_three(cls, transformer: Callable[[_S, _T, _U], int],
+                          first: _S | Value[_S], second: _T | Value[_T], third: _U | Value[_U]) -> IntValue:
+        return Value.derive_from_three_with_factory(
+            transformer,
+            first, second, third,
+            create_value=ThreeToIntValue.create,
+            create_constant=IntConstant.of,
+        )
 
     @classmethod
-    def derive_many(cls, operator_: Callable[[Sequence[int]], int], *values: IntLike, is_associative: bool = False) -> IntValue:
-        try:
-            constant_values = [get_constant_of_generic_like(v) for v in values]
-        except NotConstantError:
-            if is_associative:
-                flattened = tuple(item for v in values for item in decompose_operands_of_generic_like(operator_, v))
-                return ManyIntsToIntValue(operator_, *flattened)
-            else:
-                return ManyIntsToIntValue(operator_, *values)
-        else:
-            return IntConstant.of(operator_(constant_values))
+    def derive_from_many(cls, transformer: Callable[[Iterable[int]], int], *values: IntLike, is_associative: bool = False) -> IntValue:
+        return Value.derive_from_many_with_factory(
+            transformer,
+            *values,
+            create_value=ManyIntsToIntValue.create,
+            create_constant=IntConstant.of,
+            is_associative=is_associative,
+        )
 
 
 def min_int(*values: IntLike) -> IntValue:
-    return IntValue.derive_many(min, *values, is_associative=True)
+    return IntValue.derive_from_many(min, *values, is_associative=True)
 
 
 def max_int(*values: IntLike) -> IntValue:
-    return IntValue.derive_many(max, *values, is_associative=True)
+    return IntValue.derive_from_many(max, *values, is_associative=True)
 
 
 class OneToIntValue(Generic[_S], OneToOneValue[_S, int], IntValue):
@@ -201,7 +196,9 @@ class TwoToIntValue(Generic[_S, _T], TwoToOneValue[_S, _T, int], IntValue):
 
 
 class ThreeToIntValue(Generic[_S, _T, _U], ThreeToOneValue[_S, _T, _U, int], IntValue):
-    pass
+    @staticmethod
+    def create(transformer: Callable[[_S, _T, _U], int], first: _S | Value[_S], second: _T | Value[_T], third: _U | Value[_U]) -> IntValue:
+        return ThreeToIntValue(transformer, first, second, third)
 
 
 class IntConstant(IntValue, Constant[int]):
@@ -233,8 +230,9 @@ class IntVariable(SimpleVariable[int], IntValue):
 
 
 class ManyIntsToIntValue(ManyToSameValue[int], IntValue):
-    def __init__(self, operator_: Callable[[Sequence[int]], int], *values: IntLike):
-        super().__init__(operator_, *values)
+    @staticmethod
+    def create(transformer: Callable[[Iterable[int]], int], values: Iterable[IntLike]) -> IntValue:
+        return ManyIntsToIntValue(transformer, *values)
 
 
 class AbsIntValue(OneToOneValue[int, int], IntValue):
@@ -254,8 +252,3 @@ class NegateIntValue(OneToOneValue[int, int], IntValue):
         if isinstance(of, IntValue):
             return of
         return super().__neg__()
-
-
-class SelectIntValue(SelectValue[int], IntValue):
-    def __init__(self, condition: BoolLike, if_true: IntLike, if_false: IntLike):
-        super().__init__(condition, if_true, if_false)

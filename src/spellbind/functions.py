@@ -1,6 +1,6 @@
 import inspect
 from inspect import Parameter
-from typing import Callable, Sequence
+from typing import Callable, Iterable
 
 
 def _is_positional_parameter(param: Parameter) -> bool:
@@ -33,21 +33,21 @@ def assert_parameter_max_count(callable_: Callable, max_count: int) -> None:
                          f"{count_non_default_parameters(callable_)} > {max_count}")
 
 
-def multiply_all_ints(vals: Sequence[int]) -> int:
+def _multiply_all_ints(vals: Iterable[int]) -> int:
     result = 1
     for val in vals:
         result *= val
     return result
 
 
-def multiply_all_floats(vals: Sequence[float]) -> float:
+def _multiply_all_floats(vals: Iterable[float]) -> float:
     result = 1.
     for val in vals:
         result *= val
     return result
 
 
-def clamp_int(value: int, min_value: int, max_value: int) -> int:
+def _clamp_int(value: int, min_value: int, max_value: int) -> int:
     if value < min_value:
         return min_value
     elif value > max_value:
@@ -55,7 +55,7 @@ def clamp_int(value: int, min_value: int, max_value: int) -> int:
     return value
 
 
-def clamp_float(value: float, min_value: float, max_value: float) -> float:
+def _clamp_float(value: float, min_value: float, max_value: float) -> float:
     if value < min_value:
         return min_value
     elif value > max_value:

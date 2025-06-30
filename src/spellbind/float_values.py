@@ -8,10 +8,10 @@ from typing import Generic, Callable, Sequence, TypeVar, overload
 from typing_extensions import Self
 from typing_extensions import TYPE_CHECKING
 
-from spellbind.bool_values import BoolValue, BoolLike
-from spellbind.functions import clamp_float, multiply_all_floats
-from spellbind.values import Value, SimpleVariable, OneToOneValue, DerivedValueBase, Constant, SelectValue, \
-    NotConstantError
+from spellbind.bool_values import BoolValue
+from spellbind.functions import _clamp_float, _multiply_all_floats
+from spellbind.values import Value, SimpleVariable, OneToOneValue, DerivedValueBase, Constant, \
+    NotConstantError, ThreeToOneValue
 
 if TYPE_CHECKING:
     from spellbind.int_values import IntValue, IntLike  # pragma: no cover
@@ -24,7 +24,7 @@ _U = TypeVar("_U")
 
 
 _COMMUTATIVE_OPERATORS = {
-    operator.add, sum, multiply_all_floats, max, min
+    operator.add, sum, _multiply_all_floats, max, min
 }
 
 
@@ -34,40 +34,40 @@ def _average_float(values: Sequence[float]) -> float:
 
 class FloatValue(Value[float], ABC):
     def __add__(self, other: FloatLike) -> FloatValue:
-        return FloatValue.derive_many(sum, self, other, is_associative=True)
+        return FloatValue.derive_from_many(sum, self, other, is_associative=True)
 
     def __radd__(self, other: int | float) -> FloatValue:
-        return FloatValue.derive_many(sum, other, self, is_associative=True)
+        return FloatValue.derive_from_many(sum, other, self, is_associative=True)
 
     def __sub__(self, other: FloatLike) -> FloatValue:
-        return FloatValue.derive_two(operator.sub, self, other)
+        return FloatValue.derive_from_two(operator.sub, self, other)
 
     def __rsub__(self, other: int | float) -> FloatValue:
-        return FloatValue.derive_two(operator.sub, other, self)
+        return FloatValue.derive_from_two(operator.sub, other, self)
 
     def __mul__(self, other: FloatLike) -> FloatValue:
-        return FloatValue.derive_many(multiply_all_floats, self, other, is_associative=True)
+        return FloatValue.derive_from_many(_multiply_all_floats, self, other, is_associative=True)
 
     def __rmul__(self, other: int | float) -> FloatValue:
-        return FloatValue.derive_many(multiply_all_floats, other, self, is_associative=True)
+        return FloatValue.derive_from_many(_multiply_all_floats, other, self, is_associative=True)
 
     def __truediv__(self, other: FloatLike) -> FloatValue:
-        return FloatValue.derive_two(operator.truediv, self, other)
+        return FloatValue.derive_from_two(operator.truediv, self, other)
 
     def __rtruediv__(self, other: int | float) -> FloatValue:
-        return FloatValue.derive_two(operator.truediv, other, self)
+        return FloatValue.derive_from_two(operator.truediv, other, self)
 
     def __pow__(self, other: FloatLike) -> FloatValue:
-        return FloatValue.derive_two(operator.pow, self, other)
+        return FloatValue.derive_from_two(operator.pow, self, other)
 
     def __rpow__(self, other: FloatLike) -> FloatValue:
-        return FloatValue.derive_two(operator.pow, other, self)
+        return FloatValue.derive_from_two(operator.pow, other, self)
 
     def __mod__(self, other: FloatLike) -> FloatValue:
-        return FloatValue.derive_two(operator.mod, self, other)
+        return FloatValue.derive_from_two(operator.mod, self, other)
 
     def __rmod__(self, other: int | float) -> FloatValue:
-        return FloatValue.derive_two(operator.mod, other, self)
+        return FloatValue.derive_from_two(operator.mod, other, self)
 
     def __abs__(self) -> FloatValue:
         return AbsFloatValue(self)
@@ -75,12 +75,12 @@ class FloatValue(Value[float], ABC):
     def floor(self) -> IntValue:
         from spellbind.int_values import IntValue
         floor_fun: Callable[[float], int] = math.floor
-        return IntValue.derive_one(floor_fun, self)
+        return IntValue.derive_from_one(floor_fun, self)
 
     def ceil(self) -> IntValue:
         from spellbind.int_values import IntValue
         ceil_fun: Callable[[float], int] = math.ceil
-        return IntValue.derive_one(ceil_fun, self)
+        return IntValue.derive_from_one(ceil_fun, self)
 
     @overload
     def round(self) -> IntValue: ...
@@ -92,9 +92,9 @@ class FloatValue(Value[float], ABC):
         if ndigits is None:
             from spellbind.int_values import IntValue
             round_to_int_fun: Callable[[float], int] = round
-            return IntValue.derive_one(round_to_int_fun, self)
+            return IntValue.derive_from_one(round_to_int_fun, self)
         round_fun: Callable[[float, int], float] = round
-        return FloatValue.derive_two(round_fun, self, ndigits)
+        return FloatValue.derive_from_two(round_fun, self, ndigits)
 
     def __lt__(self, other: FloatLike) -> BoolValue:
         return CompareNumbersValues(self, other, operator.lt)
@@ -115,13 +115,13 @@ class FloatValue(Value[float], ABC):
         return self
 
     def clamp(self, min_value: FloatLike, max_value: FloatLike) -> FloatValue:
-        return FloatValue.derive_three(clamp_float, self, min_value, max_value)
+        return FloatValue.derive_from_three_floats(_clamp_float, self, min_value, max_value)
 
     def decompose_float_operands(self, operator_: Callable[[Sequence[float]], _S]) -> Sequence[FloatLike]:
         return (self,)
 
     @classmethod
-    def derive_one(cls, transformer: Callable[[float], float], of: FloatLike) -> FloatValue:
+    def derive_from_one(cls, transformer: Callable[[float], float], of: FloatLike) -> FloatValue:
         try:
             constant_value = _get_constant_float(of)
         except NotConstantError:
@@ -131,14 +131,14 @@ class FloatValue(Value[float], ABC):
 
     @classmethod
     @overload
-    def derive_two(cls, operator_: Callable[[float, int], float], first: FloatLike, second: IntLike) -> FloatValue: ...
+    def derive_from_two(cls, operator_: Callable[[float, int], float], first: FloatLike, second: IntLike) -> FloatValue: ...
 
     @classmethod
     @overload
-    def derive_two(cls, operator_: Callable[[float, float], float], first: FloatLike, second: FloatLike) -> FloatValue: ...
+    def derive_from_two(cls, operator_: Callable[[float, float], float], first: FloatLike, second: FloatLike) -> FloatValue: ...
 
     @classmethod
-    def derive_two(cls, operator_, first, second) -> FloatValue:
+    def derive_from_two(cls, operator_, first, second) -> FloatValue:
         try:
             constant_first = _get_constant_float(first)
             constant_second = _get_constant_float(second)
@@ -148,49 +148,59 @@ class FloatValue(Value[float], ABC):
             return FloatConstant.of(operator_(constant_first, constant_second))
 
     @classmethod
-    def derive_three(cls, operator_: Callable[[float, float, float], float],
-                     first: FloatLike, second: FloatLike, third: FloatLike) -> FloatValue:
+    def derive_from_three_floats(cls, transformer: Callable[[float, float, float], float],
+                                 first: FloatLike, second: FloatLike, third: FloatLike) -> FloatValue:
         try:
             constant_first = _get_constant_float(first)
             constant_second = _get_constant_float(second)
             constant_third = _get_constant_float(third)
         except NotConstantError:
-            return ThreeFloatToFloatValue(operator_, first, second, third)
+            return ThreeFloatToFloatValue(transformer, first, second, third)
         else:
-            return FloatConstant.of(operator_(constant_first, constant_second, constant_third))
+            return FloatConstant.of(transformer(constant_first, constant_second, constant_third))
 
     @classmethod
-    def derive_many(cls, operator_: Callable[[Sequence[float]], float], *values: FloatLike, is_associative: bool = False) -> FloatValue:
+    def derive_from_three(cls, transformer: Callable[[_S, _T, _U], float],
+                          first: _S | Value[_S], second: _T | Value[_T], third: _U | Value[_U]) -> FloatValue:
+        return Value.derive_from_three_with_factory(
+            transformer,
+            first, second, third,
+            create_value=ThreeToFloatValue.create,
+            create_constant=FloatConstant.of,
+        )
+
+    @classmethod
+    def derive_from_many(cls, transformer: Callable[[Sequence[float]], float], *values: FloatLike, is_associative: bool = False) -> FloatValue:
         try:
             constant_values = [_get_constant_float(v) for v in values]
         except NotConstantError:
             if is_associative:
-                flattened = [item for v in values for item in _decompose_float_operands(operator_, v)]
-                return ManyFloatsToFloatValue(operator_, *flattened)
+                flattened = [item for v in values for item in _decompose_float_operands(transformer, v)]
+                return ManyFloatsToFloatValue(transformer, *flattened)
             else:
-                return ManyFloatsToFloatValue(operator_, *values)
+                return ManyFloatsToFloatValue(transformer, *values)
         else:
-            return FloatConstant.of(operator_(constant_values))
+            return FloatConstant.of(transformer(constant_values))
 
 
 def min_float(*values: FloatLike) -> FloatValue:
-    return FloatValue.derive_many(min, *values, is_associative=True)
+    return FloatValue.derive_from_many(min, *values, is_associative=True)
 
 
 def max_float(*values: FloatLike) -> FloatValue:
-    return FloatValue.derive_many(max, *values, is_associative=True)
+    return FloatValue.derive_from_many(max, *values, is_associative=True)
 
 
 def average_floats(*values: FloatLike) -> FloatValue:
-    return FloatValue.derive_many(_average_float, *values)
+    return FloatValue.derive_from_many(_average_float, *values)
 
 
 def sum_floats(*values: FloatLike) -> FloatValue:
-    return FloatValue.derive_many(sum, *values, is_associative=True)
+    return FloatValue.derive_from_many(sum, *values, is_associative=True)
 
 
 def multiply_floats(*values: FloatLike) -> FloatValue:
-    return FloatValue.derive_many(multiply_all_floats, *values, is_associative=True)
+    return FloatValue.derive_from_many(_multiply_all_floats, *values, is_associative=True)
 
 
 class OneToFloatValue(Generic[_S], OneToOneValue[_S, float], FloatValue):
@@ -328,6 +338,13 @@ class ThreeFloatToFloatValue(ThreeFloatToOneValue[float], FloatValue):
         return (self,)
 
 
+class ThreeToFloatValue(ThreeToOneValue[_S, _T, _U, float], FloatValue):
+    @classmethod
+    def create(cls, transformer: Callable[[_S, _T, _U], float],
+               first: _S | Value[_S], second: _T | Value[_T], third: _U | Value[_U]) -> FloatValue:
+        return ThreeToFloatValue(transformer, first, second, third)
+
+
 class AbsFloatValue(OneFloatToOneValue[float], FloatValue):
     def __init__(self, value: FloatLike):
         super().__init__(abs, value)
@@ -350,8 +367,3 @@ class NegateFloatValue(OneFloatToFloatValue, FloatValue):
 class CompareNumbersValues(TwoFloatsToOneValue[bool], BoolValue):
     def __init__(self, left: FloatLike, right: FloatLike, op: Callable[[float, float], bool]):
         super().__init__(op, left, right)
-
-
-class SelectFloatValue(SelectValue[float], FloatValue):
-    def __init__(self, condition: BoolLike, if_true: float | Value[float], if_false: float | Value[float]):
-        super().__init__(condition, if_true, if_false)
