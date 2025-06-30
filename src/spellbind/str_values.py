@@ -15,10 +15,20 @@ if TYPE_CHECKING:
 StrLike = str | Value[str]
 
 _S = TypeVar('_S')
+_JOIN_FUNCTIONS: dict[str, Callable[[Iterable[str]], str]] = {}
 
 
-def _join_strs(values: Iterable[str]) -> str:
-    return "".join(values)
+def _get_join_function(separator: str) -> Callable[[Iterable[str]], str]:
+    try:
+        return _JOIN_FUNCTIONS[separator]
+    except KeyError:
+        def join_function(values: Iterable[str]) -> str:
+            return separator.join(values)
+        _JOIN_FUNCTIONS[separator] = join_function
+        return join_function
+
+
+_join_strs = _get_join_function("")
 
 
 class StrValue(Value[str], ABC):
@@ -50,6 +60,14 @@ class StrValue(Value[str], ABC):
                 return ManyStrsToStrValue(operator_, *values)
         else:
             return StrConstant.of(operator_(constant_values))
+
+
+def concatenate(*values: StrLike) -> StrValue:
+    return StrValue.derive_many(_join_strs, *values, is_associative=True)
+
+
+def join(separator: str = "", *values: StrLike) -> StrValue:
+    return StrValue.derive_many(_get_join_function(separator), *values, is_associative=True)
 
 
 class OneToStrValue(OneToOneValue[_S, str], StrValue, Generic[_S]):

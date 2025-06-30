@@ -10,9 +10,7 @@ spellbind is a reactive programming library that lets you create Variables that 
 ## Installation
 
 ```bash
-git clone https://github.com/FancyNeuron/spellbind.git
-cd spellbind
-pip install -e .
+pip install spellbind
 ```
 
 ## Quick Start

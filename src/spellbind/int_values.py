@@ -138,14 +138,6 @@ class IntValue(Value[int], ABC):
         return IntValue.derive_three(clamp_int, self, min_value, max_value)
 
     @classmethod
-    def min(cls, *values: IntLike) -> IntValue:
-        return IntValue.derive_many(min, *values, is_associative=True)
-
-    @classmethod
-    def max(cls, *values: IntLike) -> IntValue:
-        return IntValue.derive_many(max, *values, is_associative=True)
-
-    @classmethod
     def derive_one(cls, operator_: Callable[[_S], int], value: _S | Value[_S]) -> IntValue:
         if not isinstance(value, Value):
             return IntConstant.of(operator_(value))
@@ -190,6 +182,14 @@ class IntValue(Value[int], ABC):
                 return ManyIntsToIntValue(operator_, *values)
         else:
             return IntConstant.of(operator_(constant_values))
+
+
+def min_int(*values: IntLike) -> IntValue:
+    return IntValue.derive_many(min, *values, is_associative=True)
+
+
+def max_int(*values: IntLike) -> IntValue:
+    return IntValue.derive_many(max, *values, is_associative=True)
 
 
 class OneToIntValue(Generic[_S], OneToOneValue[_S, int], IntValue):

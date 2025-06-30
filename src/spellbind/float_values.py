@@ -121,18 +121,6 @@ class FloatValue(Value[float], ABC):
         return (self,)
 
     @classmethod
-    def min(cls, *values: FloatLike) -> FloatValue:
-        return cls.derive_many(min, *values, is_associative=True)
-
-    @classmethod
-    def max(cls, *values: FloatLike) -> FloatValue:
-        return cls.derive_many(max, *values, is_associative=True)
-
-    @classmethod
-    def average(cls, *values: FloatLike) -> FloatValue:
-        return cls.derive_many(_average_float, *values)
-
-    @classmethod
     def derive_one(cls, transformer: Callable[[float], float], of: FloatLike) -> FloatValue:
         try:
             constant_value = _get_constant_float(of)
@@ -185,6 +173,26 @@ class FloatValue(Value[float], ABC):
             return FloatConstant.of(operator_(constant_values))
 
 
+def min_float(*values: FloatLike) -> FloatValue:
+    return FloatValue.derive_many(min, *values, is_associative=True)
+
+
+def max_float(*values: FloatLike) -> FloatValue:
+    return FloatValue.derive_many(max, *values, is_associative=True)
+
+
+def average_floats(*values: FloatLike) -> FloatValue:
+    return FloatValue.derive_many(_average_float, *values)
+
+
+def sum_floats(*values: FloatLike) -> FloatValue:
+    return FloatValue.derive_many(sum, *values, is_associative=True)
+
+
+def multiply_floats(*values: FloatLike) -> FloatValue:
+    return FloatValue.derive_many(multiply_all_floats, *values, is_associative=True)
+
+
 class OneToFloatValue(Generic[_S], OneToOneValue[_S, float], FloatValue):
     pass
 
@@ -195,7 +203,7 @@ class FloatConstant(FloatValue, Constant[float]):
     @classmethod
     def of(cls, value: float) -> FloatConstant:
         try:
-            return cls._cache[value]
+            return FloatConstant._cache[value]
         except KeyError:
             return FloatConstant(value)
 
