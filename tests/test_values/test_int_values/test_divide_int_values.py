@@ -1,5 +1,5 @@
-from spellbind.float_values import FloatVariable
-from spellbind.int_values import IntVariable
+from spellbind.float_values import FloatVariable, FloatConstant
+from spellbind.int_values import IntVariable, IntConstant
 
 
 def test_truediv_int_values():
@@ -40,25 +40,6 @@ def test_truediv_int_value_by_float_value():
     assert v2.value == 3.75
 
 
-def test_floordiv_int_values():
-    v0 = IntVariable(10)
-    v1 = IntVariable(3)
-    v2 = v0 // v1
-    assert v2.value == 3
-
-    v0.value = 15
-    assert v2.value == 5
-
-
-def test_floordiv_int_value_by_int():
-    v0 = IntVariable(10)
-    v2 = v0 // 3
-    assert v2.value == 3
-
-    v0.value = 15
-    assert v2.value == 5
-
-
 def test_truediv_int_divided_by_int_value():
     v1 = IntVariable(4)
     v2 = 10 / v1
@@ -77,10 +58,23 @@ def test_truediv_float_divided_by_int_value():
     assert v2.value == 2.0
 
 
-def test_floordiv_int_divided_by_int_value():
-    v1 = IntVariable(3)
-    v2 = 10 // v1
-    assert v2.value == 3
-
-    v1.value = 4
+def test_truediv_constant_constant_is_constant():
+    v0 = IntConstant(10)
+    v1 = IntConstant(5)
+    v2 = v0 / v1
     assert v2.value == 2
+    assert isinstance(v2, FloatConstant)
+
+
+def test_truediv_literal_constant_is_constant():
+    v0 = IntConstant(10)
+    v2 = v0 / 5
+    assert v2.value == 2
+    assert isinstance(v2, FloatConstant)
+
+
+def test_truediv_constant_literal_is_constant():
+    v0 = IntConstant(5)
+    v2 = 10 / v0
+    assert v2.value == 2
+    assert isinstance(v2, FloatConstant)

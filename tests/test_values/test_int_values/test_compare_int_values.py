@@ -2,7 +2,6 @@ from spellbind.float_values import FloatVariable
 from spellbind.int_values import IntVariable
 
 
-# Comparison Tests - Less Than
 def test_less_than_int_values():
     v0 = IntVariable(3)
     v1 = IntVariable(5)
@@ -119,7 +118,6 @@ def test_greater_than_int_value_and_float_value():
     assert not v2.value
 
 
-# Comparison Tests - Greater Than or Equal
 def test_greater_than_or_equal_int_values():
     v0 = IntVariable(5)
     v1 = IntVariable(5)

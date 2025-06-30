@@ -1,5 +1,5 @@
 from conftest import OneParameterObserver
-from spellbind.float_values import FloatVariable
+from spellbind.float_values import FloatVariable, FloatConstant
 from spellbind.int_values import IntVariable
 
 
@@ -56,4 +56,13 @@ def test_round_float_change_comma_doesnt_change_int_value():
     rounded.observe(observer)
     assert rounded.value == 3
 
+    v0.value = 3.3
+    assert rounded.value == 3
+
     observer.assert_not_called()
+
+
+def test_round_constant_float_is_constant_value():
+    v0 = FloatConstant(3.14159)
+    v1 = v0.round(2)
+    assert isinstance(v1, FloatConstant)
