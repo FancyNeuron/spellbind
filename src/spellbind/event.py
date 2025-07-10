@@ -1,11 +1,11 @@
 from abc import ABC, abstractmethod
-from typing import Callable, TypeVar, Generic
+from typing import Callable, TypeVar, Generic, Iterable
 
-from spellbind.emitters import Emitter, TriEmitter, BiEmitter, ValueEmitter
+from spellbind.emitters import Emitter, TriEmitter, BiEmitter, ValueEmitter, ValuesEmitter
 from spellbind.functions import assert_parameter_max_count
 from spellbind.observables import Observable, ValueObservable, BiObservable, TriObservable, Observer, \
     ValueObserver, BiObserver, TriObserver, Subscription, WeakSubscription, StrongSubscription, \
-    RemoveSubscriptionError
+    RemoveSubscriptionError, ValuesObserver, ValuesObservable, StrongManyToOneSubscription, WeakManyToOneSubscription
 
 _S = TypeVar("_S")
 _T = TypeVar("_T")
@@ -14,7 +14,7 @@ _O = TypeVar('_O', bound=Callable)
 
 
 class _BaseEvent(Generic[_O], ABC):
-    _subscriptions: list[Subscription[_O]]
+    _subscriptions: list[Subscription]
 
     def __init__(self):
         self._subscriptions = []
@@ -80,3 +80,22 @@ class TriEvent(Generic[_S, _T, _U], _BaseEvent[Observer | ValueObserver[_S] | Bi
 
     def __call__(self, value_0: _S, value_1: _T, value_2: _U) -> None:
         self._emit(value_0, value_1, value_2)
+
+
+class ValuesEvent(Generic[_S], _BaseEvent[Observer | ValuesObserver[_S]], ValuesObservable[_S], ValuesEmitter[_S]):
+    def _get_parameter_count(self) -> int:
+        return 1
+
+    def __call__(self, value: Iterable[_S]) -> None:
+        self._emit(value)
+
+    def emit_single(self, value: _S) -> None:
+        self._emit((value,))
+
+    def observe_single(self, observer: ValueObserver[_S], times: int | None = None) -> None:
+        assert_parameter_max_count(observer, 1)
+        self._subscriptions.append(StrongManyToOneSubscription(observer, times))
+
+    def weak_observe_single(self, observer: ValueObserver[_S], times: int | None = None) -> None:
+        assert_parameter_max_count(observer, 1)
+        self._subscriptions.append(WeakManyToOneSubscription(observer, times))

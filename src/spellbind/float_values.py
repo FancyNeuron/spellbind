@@ -23,11 +23,6 @@ _T = TypeVar("_T")
 _U = TypeVar("_U")
 
 
-_COMMUTATIVE_OPERATORS = {
-    operator.add, sum, _multiply_all_floats, max, min
-}
-
-
 def _average_float(values: Sequence[float]) -> float:
     return sum(values) / len(values)
 
@@ -367,3 +362,6 @@ class NegateFloatValue(OneFloatToFloatValue, FloatValue):
 class CompareNumbersValues(TwoFloatsToOneValue[bool], BoolValue):
     def __init__(self, left: FloatLike, right: FloatLike, op: Callable[[float, float], bool]):
         super().__init__(op, left, right)
+
+
+ZERO = FloatConstant.of(0.)

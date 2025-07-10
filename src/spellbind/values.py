@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import TypeVar, Generic, Optional, Any, Iterable, TYPE_CHECKING, Callable, Sequence
+from contextlib import contextmanager
+from typing import TypeVar, Generic, Optional, Any, Iterable, TYPE_CHECKING, Callable, Sequence, ContextManager, \
+    Generator
 
 from spellbind.event import ValueEvent
 from spellbind.observables import ValueObservable, Observer, ValueObserver
@@ -173,6 +175,9 @@ class Variable(Value[_S], Generic[_S], ABC):
     @abstractmethod
     def unbind(self, not_bound_ok: bool = False) -> None: ...
 
+    @abstractmethod
+    def set_delay_notify(self, new_value: _S) -> ContextManager[None]: ...
+
 
 class SimpleVariable(Variable[_S], Generic[_S]):
     _bound_to_set: frozenset[Value[_S]]
@@ -195,13 +200,21 @@ class SimpleVariable(Variable[_S], Generic[_S]):
             raise ValueError("Cannot set value of a Variable that is bound to a Value.")
         self._set_value_bypass_bound_check(new_value)
 
+    @contextmanager
+    def set_delay_notify(self, new_value: _S) -> Generator[None, None, None]:
+        if self._bound_to is not None:
+            raise ValueError("Cannot set value of a Variable that is bound to a Value.")
+        if new_value != self._value:
+            self._value = new_value
+            yield None
+            self._on_change(new_value)
+        else:
+            yield None
+
     def _set_value_bypass_bound_check(self, new_value: _S) -> None:
         if new_value != self._value:
             self._value = new_value
             self._on_change(new_value)
-
-    def _receive_bound_value(self, value: _S) -> None:
-        self._set_value_bypass_bound_check(value)
 
     def observe(self, observer: Observer | ValueObserver[_S], times: int | None = None) -> None:
         self._on_change.observe(observer, times)
@@ -224,9 +237,9 @@ class SimpleVariable(Variable[_S], Generic[_S]):
                 return
             self.unbind()
         if bind_weakly:
-            value.weak_observe(self._receive_bound_value)
+            value.weak_observe(self._set_value_bypass_bound_check)
         else:
-            value.observe(self._receive_bound_value)
+            value.observe(self._set_value_bypass_bound_check)
         self._bound_to = value
         self._bound_to_set = frozenset([value])
         self._set_value_bypass_bound_check(value.value)
@@ -238,7 +251,7 @@ class SimpleVariable(Variable[_S], Generic[_S]):
             else:
                 return
 
-        self._bound_to.unobserve(self._receive_bound_value)
+        self._bound_to.unobserve(self._set_value_bypass_bound_check)
         self._bound_to = None
         self._bound_to_set = EMPTY_FROZEN_SET
 

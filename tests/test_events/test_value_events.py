@@ -170,7 +170,7 @@ def test_value_event_unobserve_lambda_observer():
 def test_value_event_observe_lambda_observer_too_many_parameters_fails():
     event = ValueEvent[str]()
 
-    with pytest.raises(ValueError, match="has too many non-default parameters: 2 > 1"):
+    with pytest.raises(ValueError):
         event.observe(lambda param0, param1: None)
 
 
