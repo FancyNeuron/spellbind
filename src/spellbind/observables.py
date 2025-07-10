@@ -1,8 +1,10 @@
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
-from typing import TypeVar, Callable, Generic, Protocol, Iterable
+from typing import TypeVar, Callable, Generic, Protocol, Iterable, Any, Sequence
 from weakref import WeakMethod, ref
 
-from spellbind.functions import count_positional_parameters
+from spellbind.functions import count_positional_parameters, assert_parameter_max_count
 
 _SC = TypeVar("_SC", contravariant=True)
 _TC = TypeVar("_TC", contravariant=True)
@@ -200,6 +202,98 @@ class ValuesObservable(Observable, Generic[_S], ABC):
 
     @abstractmethod
     def unobserve(self, observer: Observer | ValuesObserver[_S]) -> None: ...
+
+    def derive(self, transformer: Callable[[_S], _T], weakly: bool = False) -> ValuesObservable[_T]:
+        return DerivedValuesObservable(self, transformer, weakly=weakly)
+
+
+class _BaseObservable(Generic[_O], ABC):
+    _subscriptions: list[Subscription]
+
+    def __init__(self):
+        super().__init__()
+        self._subscriptions = []
+
+    @abstractmethod
+    def _get_parameter_count(self) -> int: ...
+
+    def observe(self, observer: _O, times: int | None = None) -> None:
+        assert_parameter_max_count(observer, self._get_parameter_count())
+        self._subscriptions.append(StrongSubscription(observer, times))
+
+    def weak_observe(self, observer: _O, times: int | None = None) -> None:
+        assert_parameter_max_count(observer, self._get_parameter_count())
+        self._subscriptions.append(WeakSubscription(observer, times))
+
+    def unobserve(self, observer: _O) -> None:
+        for i, sub in enumerate(self._subscriptions):
+            if sub.matches_observer(observer):
+                del self._subscriptions[i]
+                return
+        raise ValueError(f"Observer {observer} is not subscribed to this event.")
+
+    def is_observed(self, observer: _O) -> bool:
+        return any(sub.matches_observer(observer) for sub in self._subscriptions)
+
+    def _emit(self, *args) -> None:
+        i = 0
+        while i < len(self._subscriptions):
+            try:
+                self._subscriptions[i](*args)
+                i += 1
+            except RemoveSubscriptionError:
+                del self._subscriptions[i]
+
+    def _emit_lazy(self, func: Callable[[], Sequence[Any]]) -> None:
+        if len(self._subscriptions) == 0:
+            return
+        self._emit(*func())
+
+
+class _BaseValuesObservable(_BaseObservable[_O], Generic[_O], ABC):
+    def _emit_single(self, value: _S) -> None:
+        self._emit((value,))
+
+    def observe_single(self, observer: ValueObserver[_S], times: int | None = None) -> None:
+        assert_parameter_max_count(observer, 1)
+        self._subscriptions.append(StrongManyToOneSubscription(observer, times))
+
+    def weak_observe_single(self, observer: ValueObserver[_S], times: int | None = None) -> None:
+        assert_parameter_max_count(observer, 1)
+        self._subscriptions.append(WeakManyToOneSubscription(observer, times))
+
+    def _get_parameter_count(self) -> int:
+        return 1
+
+    def _emit_values(self, args: Sequence[Any]) -> None:
+        i = 0
+        while i < len(self._subscriptions):
+            try:
+                self._subscriptions[i](args)
+                i += 1
+            except RemoveSubscriptionError:
+                del self._subscriptions[i]
+
+    def _emit_values_lazy(self, func: Callable[[], Sequence[Any]]) -> None:
+        if len(self._subscriptions) == 0:
+            return
+        self._emit(func())
+
+
+class DerivedValuesObservable(_BaseValuesObservable[Observer | ValuesObserver[_S]], ValuesObservable[_S], Generic[_S]):
+    def __init__(self, derived_from: ValuesObservable[_T], transformer: Callable[[_T], _S], weakly: bool):
+        super().__init__()
+        self._derived_from = derived_from
+        self._transformer = transformer
+
+        def on_derived_from_change(values: Iterable[_T]) -> None:
+            self._emit_values_lazy(lambda: tuple(self._transformer(v) for v in values))
+
+        if weakly:
+            self._on_derive_reference = on_derived_from_change
+            self._derived_from.weak_observe(on_derived_from_change)
+        else:
+            derived_from.observe(on_derived_from_change)
 
 
 class _VoidObservable(Observable):

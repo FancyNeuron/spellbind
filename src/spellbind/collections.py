@@ -50,9 +50,9 @@ class ObservableList(ObservableMutableSequence[_S], Generic[_S]):
     def __init__(self, iterable: Iterable[_S] = ()):
         self._values = list(iterable)
         self._index_added_event = ValuesEvent[tuple[int, _S]]()
-        self._added_event = ValuesEvent[_S]()
+        self._added_event = self._index_added_event.derive(lambda v: v[1])
         self._index_removed_event = ValuesEvent[tuple[int, _S]]()
-        self._removed_event = ValuesEvent[_S]()
+        self._removed_event = self._index_removed_event.derive(lambda v: v[1])
         self._len_value = IntVariable(len(self._values))
 
     @property
@@ -85,7 +85,6 @@ class ObservableList(ObservableMutableSequence[_S], Generic[_S]):
         new_length = len(self._values)
         with self._len_value.set_delay_notify(new_length):
             self._index_added_event.emit_single((new_length - 1, item))
-            self._added_event.emit_single(item)
 
     def extend(self, items: Iterable[_S]):
         old_length = len(self._values)
@@ -95,14 +94,12 @@ class ObservableList(ObservableMutableSequence[_S], Generic[_S]):
             return
         with self._len_value.set_delay_notify(new_length):
             self._index_added_event(tuple(enumerate(items, start=old_length)))
-            self._added_event(items)
 
     def insert(self, index: SupportsIndex, item: _S):
         self._values.insert(index, item)
         with self._len_value.set_delay_notify(len(self._values)):
             index = index.__index__()
             self._index_added_event.emit_single((index, item))
-            self._added_event.emit_single(item)
 
     def insert_all(self, index_with_items: Iterable[tuple[int, _S]]):
         index_with_items = tuple(index_with_items)
@@ -115,7 +112,7 @@ class ObservableList(ObservableMutableSequence[_S], Generic[_S]):
         if old_length == new_length:
             return
         with self._len_value.set_delay_notify(new_length):
-            self._notify_added_events(sorted_index_with_items)
+            self._index_added_event(sorted_index_with_items)
 
     def remove(self, item: _S):
         index = self.index(item)
@@ -133,7 +130,6 @@ class ObservableList(ObservableMutableSequence[_S], Generic[_S]):
         self._values.__delitem__(index)
         with self._len_value.set_delay_notify(len(self._values)):
             self._index_removed_event.emit_single((index, item))
-            self._removed_event.emit_single(item)
 
     def _delitem_slice(self, slice_key: slice):
         indices = range(*slice_key.indices(len(self._values)))
@@ -158,7 +154,7 @@ class ObservableList(ObservableMutableSequence[_S], Generic[_S]):
         reverse_elements_with_index: tuple[tuple[int, _S], ...] = tuple((i, self._values.pop(i)) for i in reverse_sorted_indices)
         removed_elements_with_index: tuple[tuple[int, _S], ...] = tuple(reversed(reverse_elements_with_index))
         with self._len_value.set_delay_notify(len(self._values)):
-            self._notify_remove_events(removed_elements_with_index)
+            self._index_removed_event(removed_elements_with_index)
 
     def remove_all(self, items: Iterable[_S]):
         indices_to_remove = list(self.indices_of(items))
@@ -170,17 +166,7 @@ class ObservableList(ObservableMutableSequence[_S], Generic[_S]):
         self._values.clear()
 
         with self._len_value.set_delay_notify(0):
-            self._notify_remove_events(removed_elements_with_index)
-
-    def _notify_remove_events(self, removed_elements_with_index: Iterable[tuple[int, _S]]):
-        self._index_removed_event(removed_elements_with_index)
-        items = tuple(item for _, item in removed_elements_with_index)
-        self._removed_event(items)
-
-    def _notify_added_events(self, added_elements_with_index: Iterable[tuple[int, _S]]):
-        self._index_added_event(added_elements_with_index)
-        items = tuple(item for _, item in added_elements_with_index)
-        self._added_event(items)
+            self._index_removed_event(removed_elements_with_index)
 
     def pop(self, index: SupportsIndex = -1) -> _S:
         index = index.__index__()
@@ -213,9 +199,7 @@ class ObservableList(ObservableMutableSequence[_S], Generic[_S]):
         old_value = self[index]
         self._values.__setitem__(index, value)
         self._index_removed_event.emit_single((index, old_value))
-        self._removed_event.emit_single(old_value)
         self._index_added_event.emit_single((index, value))
-        self._added_event.emit_single(value)
 
     def __iadd__(self, values: Iterable[_S]) -> Self:  # type: ignore[override, misc]
         self.extend(values)
@@ -238,8 +222,8 @@ class ObservableList(ObservableMutableSequence[_S], Generic[_S]):
         self._values.clear()
         self._values.extend(item for _, item in added_elements_with_index)
         with self._len_value.set_delay_notify(len(self._values)):
-            self._notify_remove_events(removed_elements_with_index)
-            self._notify_added_events(added_elements_with_index)
+            self._index_removed_event(removed_elements_with_index)
+            self._index_added_event(added_elements_with_index)
 
     def map(self, transformer: Callable[[_S], _T]) -> ObservableSequence[_T]:
         return MappedObservableSequence(self, transformer)
@@ -261,9 +245,9 @@ class MappedObservableSequence(ObservableSequence[_S], Generic[_S]):
         self._map_func = map_func
         self._values = [map_func(item) for item in mapped_from]
         self._index_added_event = ValuesEvent[tuple[int, _S]]()
-        self._added_event = ValuesEvent[_S]()
+        self._added_event = self._index_added_event.derive(lambda v: v[1])
         self._index_removed_event = ValuesEvent[tuple[int, _S]]()
-        self._removed_event = ValuesEvent[_S]()
+        self._removed_event = self._index_removed_event.derive(lambda v: v[1])
         self._len_value = IntVariable(len(mapped_from))
 
         mapped_from.added_index_observable.weak_observe(self._on_batch_added)
@@ -276,8 +260,6 @@ class MappedObservableSequence(ObservableSequence[_S], Generic[_S]):
             self._values.insert(index, item)
         with self._len_value.set_delay_notify(len(self._values)):
             self._index_added_event(transformed)
-            items = tuple(item for _, item in transformed)
-            self._added_event(items)
 
     def _on_batch_removed(self, batch: Iterable[tuple[int, Any]]):
         transformed: tuple[tuple[int, _S], ...] = tuple((index, self._map_func(item)) for index, item in batch)
@@ -286,8 +268,6 @@ class MappedObservableSequence(ObservableSequence[_S], Generic[_S]):
 
         with self._len_value.set_delay_notify(len(self._values)):
             self._index_removed_event(transformed)
-            items = tuple(item for _, item in transformed)
-            self._removed_event(items)
 
     @property
     def added_observable(self) -> ValuesObservable[_S]:
