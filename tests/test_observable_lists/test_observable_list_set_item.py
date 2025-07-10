@@ -4,17 +4,16 @@ from conftest import SequenceObservers
 from spellbind.collections import ObservableList
 
 
-def test_observable_list_set_item_notifies(fully_observed_list_123):
+def test_observable_list_set_item_notifies():
     observable_list = ObservableList([1, 2, 3])
     observers = SequenceObservers(observable_list)
     observable_list[1] = 4
     assert observable_list == [1, 4, 3]
     assert observable_list.length_value.value == 3
-    observers.added_observers.assert_called_once(1, 4)
-    observers.removed_observers.assert_called_once(1, 2)
+    observers.assert_calls((1, 2, False), (1, 4, True))
 
 
-def test_observable_list_set_item_out_of_range(fully_observed_list_123):
+def test_observable_list_set_item_out_of_range():
     observable_list = ObservableList([1, 2, 3])
     observers = SequenceObservers(observable_list)
     with pytest.raises(IndexError):

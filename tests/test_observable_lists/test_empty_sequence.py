@@ -2,7 +2,7 @@ import pytest
 
 from spellbind.collections import empty_sequence
 from spellbind.int_values import IntConstant
-from spellbind.observables import VOID_VALUES_OBSERVABLE
+from spellbind.observables import VOID_VALUES_OBSERVABLE, VOID_VALUE_OBSERVABLE
 
 
 def test_empty_sequence_str():
@@ -42,7 +42,5 @@ def test_empty_sequence_get_item_raises():
 
 def test_empty_sequence_observers_are_void():
     empty_seq = empty_sequence()
-    assert empty_seq.added_observable is VOID_VALUES_OBSERVABLE
-    assert empty_seq.added_index_observable is VOID_VALUES_OBSERVABLE
-    assert empty_seq.removed_observable is VOID_VALUES_OBSERVABLE
-    assert empty_seq.removed_index_observable is VOID_VALUES_OBSERVABLE
+    assert empty_seq.delta_observable is VOID_VALUES_OBSERVABLE
+    assert empty_seq.on_change is VOID_VALUE_OBSERVABLE

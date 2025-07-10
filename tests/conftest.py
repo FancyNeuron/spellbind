@@ -1,9 +1,8 @@
 from typing import Iterable, Any, overload, Collection
 from unittest.mock import Mock
 
-import pytest
-
-from spellbind.collections import ObservableList, ObservableSequence
+from spellbind.actions import SequenceDeltaAction
+from spellbind.collections import ObservableSequence
 
 
 class Call:
@@ -31,6 +30,11 @@ class Call:
         args_repr = ", ".join(repr(arg) for arg in self.args)
         kwargs_repr = ", ".join(f"{k}={v!r}" for k, v in self.kwargs.items())
         return f"Call({args_repr}, {kwargs_repr})" if kwargs_repr else f"Call({args_repr})"
+
+    def get_arg(self) -> Any:
+        assert len(self.args) == 1
+        assert len(self.kwargs) == 0
+        return self.args[0]
 
 
 class Observer(Mock):
@@ -103,51 +107,46 @@ class Observers:
 
 
 class SequencePairObservers(Observers):
-    def __init__(self, observer: OneParameterObserver, index_observer: OneParameterObserver):
+    def __init__(self, observer: OneParameterObserver, index_observer: TwoParametersObserver):
         self.observer = observer
         self.index_observer = index_observer
         super().__init__(self.observer, self.index_observer)
 
     @overload
-    def assert_called_once(self, indices_with_values: Iterable[tuple[int, Any]]): ...
+    def assert_called(self, indices_with_values: Iterable[tuple[int, Any]]): ...
 
     @overload
-    def assert_called_once(self, index: int, value: Any): ...
+    def assert_called(self, index: int, value: Any): ...
 
-    def assert_called_once(self, index, value=None):
+    def assert_called(self, index, value=None):
         if isinstance(index, int):
             self.observer.assert_called_once_with((value,))
-            self.index_observer.assert_called_once_with(((index, value),))
+            self.index_observer.assert_called_once_with((value, index))
         else:
-            self.observer.assert_called_once_with(tuple(value for _, value in index))
-            self.index_observer.assert_called_once_with(index)
+            assert self.observer.calls == tuple(value for _, value in index)
+            assert self.index_observer.calls == tuple((value, index) for index, value in index)
 
 
 class SequenceObservers(Observers):
     def __init__(self, observable_sequence: ObservableSequence):
-        self.added_observer = OneParameterObserver()
-        self.added_index_observer = OneParameterObserver()
-        self.added_observers = SequencePairObservers(self.added_observer, self.added_index_observer)
-        self.removed_observer = OneParameterObserver()
-        self.removed_index_observer = OneParameterObserver()
-        self.removed_observers = SequencePairObservers(self.removed_observer, self.removed_index_observer)
-        observable_sequence.added_observable.observe(self.added_observer)
-        observable_sequence.removed_observable.observe(self.removed_observer)
-        observable_sequence.added_index_observable.observe(self.added_index_observer)
-        observable_sequence.removed_index_observable.observe(self.removed_index_observer)
-        super().__init__(*self.added_observers, *self.removed_observers)
+        self.on_change_observer = OneParameterObserver()
+        self.delta_observer = OneParameterObserver()
+        observable_sequence.on_change.observe(self.on_change_observer)
+        observable_sequence.delta_observable.observe_single(self.delta_observer)
+        super().__init__(self.on_change_observer, self.delta_observer)
 
+    def assert_added_calls(self, *expected_adds: tuple[int, Any]):
+        self.assert_calls(*((index, value, True) for index, value in expected_adds))
 
-@pytest.fixture
-def fully_observed_list_123() -> tuple[tuple[tuple[OneParameterObserver, OneParameterObserver], tuple[OneParameterObserver, OneParameterObserver]], ObservableList]:
-    added_observer = OneParameterObserver()
-    removed_observer = OneParameterObserver()
-    added_index_observer = OneParameterObserver()
-    removed_index_observer = OneParameterObserver()
-    observable_list = ObservableList([1, 2, 3])
-    observable_list.added_observable.observe(added_observer)
-    observable_list.removed_observable.observe(removed_observer)
-    observable_list.added_index_observable.observe(added_index_observer)
-    observable_list.removed_index_observable.observe(removed_index_observer)
+    def assert_removed_calls(self, *expected_removes: tuple[int, Any]):
+        self.assert_calls(*((index, value, False) for index, value in expected_removes))
 
-    return ((added_observer, added_index_observer), (removed_observer, removed_index_observer)), observable_list
+    def assert_calls(self, *expected_calls: tuple[int, Any, bool]):
+        delta_calls = self.delta_observer.calls
+        assert len(delta_calls) == len(expected_calls), f"Expected {len(expected_calls)} calls, got {len(delta_calls)}"
+        for i, (call, expected_call) in enumerate(zip(delta_calls, expected_calls)):
+            expected_index, expected_value, expected_added = expected_call
+            action: SequenceDeltaAction = call.get_arg()
+            assert action.is_add == expected_added, f"Error parameter {i}. Expected {'add' if expected_added else 'remove'}, got {'add' if action.is_add else 'remove'}"
+            assert action.index == expected_index, f"Error parameter {i}. Expected index {expected_index}, got {action.index}"
+            assert action.value == expected_value, f"Error parameter {i}. Expected value {expected_value}, got {action.value}"

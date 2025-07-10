@@ -2,28 +2,26 @@ from typing import Iterable
 
 import pytest
 
-from conftest import OneParameterObserver, SequenceObservers
+from conftest import SequenceObservers
 from spellbind.collections import ObservableList
 
 
 def test_remove_all_first_and_last_notifies_multiple_times():
     observable_list = ObservableList([1, 2, 3])
-    observer = OneParameterObserver()
-    observable_list.removed_observable.observe_single(observer)
+    observers = SequenceObservers(observable_list)
     observable_list.remove_all([1, 3])
     assert observable_list == [2]
     assert observable_list.length_value.value == 1
-    assert observer.calls == [1, 3]
+    observers.assert_removed_calls((0, 1), (1, 3))
 
 
-def test_remove_all_twice_notifies_multiple_times():
+def test_remove_all_duplicate_element():
     observable_list = ObservableList([1, 2, 1, 3])
-    observer = OneParameterObserver()
-    observable_list.removed_observable.observe_single(observer)
+    observers = SequenceObservers(observable_list)
     observable_list.remove_all([1, 3, 1])
     assert observable_list == [2]
     assert observable_list.length_value.value == 1
-    assert observer.calls == [1, 1, 3]
+    observers.assert_removed_calls((0, 1), (1, 1), (1, 3))
 
 
 def test_remove_all_notifies():
@@ -32,7 +30,7 @@ def test_remove_all_notifies():
     observable_list.remove_all((1, 3))
     assert observable_list == [2]
     assert observable_list.length_value.value == 1
-    observers.removed_observers.assert_called_once(((0, 1), (2, 3)))
+    observers.assert_removed_calls((0, 1), (1, 3))
 
 
 def test_remove_all_empty_does_not_notify():

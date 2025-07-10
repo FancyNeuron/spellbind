@@ -1,4 +1,4 @@
-from typing import Callable, TypeVar, Generic, Iterable
+from typing import Callable, TypeVar, Generic, Iterable, Sequence, Any
 
 from spellbind.emitters import Emitter, TriEmitter, BiEmitter, ValueEmitter, ValuesEmitter
 from spellbind.observables import Observable, ValueObservable, BiObservable, TriObservable, Observer, \
@@ -24,6 +24,9 @@ class ValueEvent(Generic[_S], _BaseObservable[Observer | ValueObserver[_S]], Val
 
     def __call__(self, value: _S) -> None:
         self._emit(value)
+
+    def emit_lazy(self, func: Callable[[], Sequence[Any]]) -> None:
+        self._emit_lazy(func)
 
 
 class BiEvent(Generic[_S, _T], _BaseObservable[Observer | ValueObserver[_S] | BiObserver[_S, _T]], BiObservable[_S, _T], BiEmitter[_S, _T]):
