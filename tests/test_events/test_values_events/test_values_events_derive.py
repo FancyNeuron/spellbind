@@ -8,7 +8,7 @@ from spellbind.observables import ValuesObservable
 @pytest.mark.parametrize("weakly", [True, False])
 def test_derive_values_event(weakly: bool):
     event = ValuesEvent[str]()
-    derived: ValuesObservable[int] = event.derive(lambda x: len(x), weakly=weakly)
+    derived: ValuesObservable[int] = event.map(lambda x: len(x), weakly=weakly)
     observer = OneParameterObserver()
     derived.observe(observer)
 
@@ -26,6 +26,6 @@ def test_derive_values_is_lazy(weakly: bool):
         return len(value)
 
     event = ValuesEvent[str]()
-    derived: ValuesObservable[int] = event.derive(derive_str, weakly=weakly)
+    derived: ValuesObservable[int] = event.map(derive_str, weakly=weakly)
     event(("apple", "banana", "fig"))
     assert derived_parameters == []

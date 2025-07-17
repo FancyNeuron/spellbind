@@ -42,7 +42,7 @@ def test_constant_unobserve_does_nothing():
 def test_constant_derived_from_empty():
     constant = Constant("test")
 
-    assert constant.derived_from() == frozenset()
+    assert constant.derived_from == frozenset()
 
 
 def test_constant_deep_derived_from_empty():

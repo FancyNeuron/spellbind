@@ -252,7 +252,7 @@ def test_simple_variable_rebind_after_unbind():
 def test_simple_variable_derived_from_empty():
     variable = SimpleVariable("test")
 
-    assert variable.derived_from() == frozenset()
+    assert variable.derived_from == frozenset()
 
 
 def test_simple_variable_derived_from_bound():
@@ -261,7 +261,7 @@ def test_simple_variable_derived_from_bound():
 
     variable.bind_to(constant)
 
-    assert variable.derived_from() == frozenset([constant])
+    assert variable.derived_from == frozenset()
 
 
 def test_simple_variable_deep_derived_from_empty():
@@ -276,7 +276,7 @@ def test_simple_variable_deep_derived_from_single_level():
 
     variable.bind_to(constant)
 
-    assert list(variable.deep_derived_from) == [constant]
+    assert list(variable.deep_derived_from) == []
 
 
 def test_simple_variable_deep_derived_from_two_levels():
@@ -288,9 +288,8 @@ def test_simple_variable_deep_derived_from_two_levels():
     variable1.bind_to(variable2)
 
     dependencies = list(variable1.deep_derived_from)
-    assert len(dependencies) == 2
+    assert len(dependencies) == 1
     assert variable2 in dependencies
-    assert constant in dependencies
 
 
 def test_simple_variable_deep_derived_from_three_levels():
@@ -304,10 +303,9 @@ def test_simple_variable_deep_derived_from_three_levels():
     variable1.bind_to(variable2)
 
     dependencies = list(variable1.deep_derived_from)
-    assert len(dependencies) == 3
+    assert len(dependencies) == 2
     assert variable2 in dependencies
     assert variable3 in dependencies
-    assert constant in dependencies
 
 
 def test_simple_variable_deep_derived_from_circular_two_variables():

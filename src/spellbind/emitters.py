@@ -16,11 +16,6 @@ class ValueEmitter(Generic[T], ABC):
     def __call__(self, value: T) -> None: ...
 
 
-class ValuesEmitter(Generic[T], ABC):
-    @abstractmethod
-    def __call__(self, values: Iterable[T]) -> None: ...
-
-
 class BiEmitter(Generic[T, U], ABC):
     @abstractmethod
     def __call__(self, value0: T, value1: U) -> None: ...
@@ -29,3 +24,8 @@ class BiEmitter(Generic[T, U], ABC):
 class TriEmitter(Generic[T, U, S], ABC):
     @abstractmethod
     def __call__(self, value0: T, value1: U, value2: S) -> None: ...
+
+
+class ValuesEmitter(Generic[T], ABC):
+    @abstractmethod
+    def __call__(self, values: Iterable[T]) -> None: ...

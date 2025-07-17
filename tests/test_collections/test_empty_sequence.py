@@ -1,6 +1,6 @@
 import pytest
 
-from spellbind.collections import empty_sequence
+from spellbind.sequences import empty_sequence
 from spellbind.int_values import IntConstant
 from spellbind.observables import VOID_VALUES_OBSERVABLE, VOID_VALUE_OBSERVABLE
 
