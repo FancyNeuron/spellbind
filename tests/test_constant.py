@@ -49,3 +49,7 @@ def test_constant_deep_derived_from_empty():
     constant = Constant("test")
 
     assert list(constant.deep_derived_from) == []
+
+
+def test_constant_of():
+    assert Constant.of("test") == Constant("test")

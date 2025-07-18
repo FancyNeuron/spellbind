@@ -1,98 +1,77 @@
-import operator
-from abc import ABC
-from functools import reduce
-from typing import Iterable, Callable
+from __future__ import annotations
 
-from spellbind.actions import CollectionAction, ClearAction, DeltasAction
-from spellbind.collections import ObservableCollection
-from spellbind.sequences import ObservableList
-from spellbind.event import BiEvent
-from spellbind.int_values import IntValue
-from spellbind.observables import BiObservable
-from spellbind.values import Value, EMPTY_FROZEN_SET
+import operator
+from abc import ABC, abstractmethod
+from functools import cached_property
+from typing import Iterable, Callable, Any
+
+from typing_extensions import TypeIs
+
+from spellbind.int_values import IntValue, IntConstant
+from spellbind.observable_collections import ObservableCollection, ReducedValue, CombinedValue, ValueCollection
+from spellbind.observable_sequences import ObservableList, _S, TypedValueList, ValueSequence, UnboxedValueSequence, \
+    ObservableSequence
+from spellbind.values import Value
 
 
 class ObservableIntCollection(ObservableCollection[int], ABC):
-    def reduce(self,
-               add_reducer: Callable[[int, int], int],
-               remove_reducer: Callable[[int, int], int],
-               empty_value: int) -> IntValue:
-        return CommutativeCombinedIntValue(self,
-                                           add_reducer=add_reducer,
-                                           remove_reducer=remove_reducer,
-                                           empty_value=empty_value)
+    @property
+    def summed(self) -> IntValue:
+        return self.reduce_to_int(add_reducer=operator.add, remove_reducer=operator.sub, initial=0)
 
-    def sum(self) -> IntValue:
-        return self.reduce(add_reducer=operator.add, remove_reducer=operator.sub, empty_value=0)
-
-    def multiply(self) -> IntValue:
-        return self.reduce(add_reducer=operator.mul, remove_reducer=operator.floordiv, empty_value=1)
+    @property
+    def multiplied(self) -> IntValue:
+        return self.reduce_to_int(add_reducer=operator.mul, remove_reducer=operator.floordiv, initial=1)
 
 
-class ObservableIntList(ObservableList[int], ObservableIntCollection):
+class ObservableIntSequence(ObservableSequence[int], ObservableIntCollection, ABC):
     pass
 
 
-class IntValueFromCollectionBase(IntValue, ABC):
-    def __init__(self):
-        self._on_change: BiEvent[int, int] = BiEvent[int, int]()
+class ObservableIntList(ObservableList[int], ObservableIntSequence):
+    pass
+
+
+class IntValueCollection(ValueCollection[int], ABC):
+    @property
+    def summed(self) -> IntValue:
+        return self.unboxed.reduce_to_int(add_reducer=operator.add, remove_reducer=operator.sub, initial=0)
 
     @property
-    def observable(self) -> BiObservable[int, int]:
-        return self._on_change
-
-    @property
-    def derived_from(self) -> frozenset[Value]:
-        return EMPTY_FROZEN_SET
+    @abstractmethod
+    def unboxed(self) -> ObservableIntCollection: ...
 
 
-class SimpleCombinedIntValue(IntValueFromCollectionBase):
-    def __init__(self, collection: ObservableCollection[int], combiner: Callable[[Iterable[int]], int]):
-        super().__init__()
-        self._collection = collection
-        self._combiner = combiner
-        self._value = self._combiner(self._collection)
-        self._collection.on_change.observe(self._recalculate_value)
-
-    def _recalculate_value(self):
-        self._value = self._combiner(self._collection)
-
-    @property
-    def value(self) -> int:
-        return self._value
+class CombinedIntValue(CombinedValue[int], IntValue):
+    def __init__(self, collection: ObservableCollection[_S], combiner: Callable[[Iterable[_S]], int]):
+        super().__init__(collection=collection, combiner=combiner)
 
 
-class CommutativeCombinedIntValue(IntValueFromCollectionBase):
-    def __init__(self, collection: ObservableCollection[int], add_reducer: Callable[[int, int], int],
-                 remove_reducer: Callable[[int, int], int], empty_value: int):
-        super().__init__()
-        self._collection = collection
-        self._add_reducer = add_reducer
-        self._removed_reducer = remove_reducer
-        self._empty_value = empty_value
-        self._value = reduce(self._add_reducer, self._collection, self._empty_value)
-        self._collection.on_change.observe(self._on_action)
+class ReducedIntValue(ReducedValue[int], IntValue):
+    def __init__(self,
+                 collection: ObservableCollection[_S],
+                 add_reducer: Callable[[int, _S], int],
+                 remove_reducer: Callable[[int, _S], int],
+                 initial: int):
+        super().__init__(collection=collection,
+                         add_reducer=add_reducer,
+                         remove_reducer=remove_reducer,
+                         initial=initial)
 
-    def _on_action(self, action: CollectionAction[int]):
-        if action.is_permutation_only:
-            return
-        if isinstance(action, DeltasAction):
-            value = self._value
-            for delta_action in action.delta_actions:
-                if delta_action.is_add:
-                    value = self._add_reducer(value, delta_action.value)
-                else:
-                    value = self._removed_reducer(value, delta_action.value)
-            self._set_value(value)
-        elif isinstance(action, ClearAction):
-            self._set_value(self._empty_value)
 
-    def _set_value(self, value: int):
-        if self._value != value:
-            old_value = self._value
-            self._value = value
-            self._on_change(value, old_value)
+class UnboxedIntValueSequence(UnboxedValueSequence[int], ObservableIntSequence):
+    def __init__(self, sequence: IntValueSequence):
+        super().__init__(sequence)
 
-    @property
-    def value(self) -> int:
-        return self._value
+
+class IntValueSequence(ValueSequence[int], IntValueCollection, ABC):
+    @cached_property
+    def unboxed(self) -> ObservableIntSequence:
+        return UnboxedIntValueSequence(self)
+
+
+class IntValueList(TypedValueList[int], IntValueSequence):
+    def __init__(self, values: Iterable[int | Value[int]] | None = None):
+        def is_int(value: Any) -> TypeIs[int]:
+            return isinstance(value, int)
+        super().__init__(values, checker=is_int, constant_factory=IntConstant.of)

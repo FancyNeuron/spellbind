@@ -1,7 +1,7 @@
 import pytest
 from spellbind.event import ValueEvent
 from conftest import NoParametersObserver, OneParameterObserver, OneDefaultParameterObserver, \
-    OneRequiredOneDefaultParameterObserver
+    OneRequiredOneDefaultParameterObserver, void_observer
 
 
 def test_value_event_unobserve_nonexistent_mock_observer_fails():
@@ -227,7 +227,7 @@ def test_value_event_lazy_evaluate_only_called_when_observed():
 
     event.emit_lazy(lazy)
     assert lazy_calls == []
-    event.observe(print)
+    event.observe(void_observer)
     event.emit_lazy(lazy)
     assert lazy_calls == ["lazy"]
 
@@ -242,6 +242,6 @@ def test_value_event_lazy_evaluate_only_called_when_derived_observed():
     derived = event.map(lambda x: x + 1)
     event.emit_lazy(lazy)
     assert lazy_calls == []
-    derived.observe(print)
+    derived.observe(void_observer)
     event.emit_lazy(lazy)
     assert lazy_calls == ["lazy"]

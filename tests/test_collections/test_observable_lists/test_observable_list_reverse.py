@@ -1,11 +1,12 @@
 import pytest
 
-from conftest import ValueSequenceObservers, assert_length_changed_during_action_events_but_notifies_after
+from conftest import ValueSequenceObservers
 from spellbind.actions import reverse_action
-from spellbind.sequences import ObservableList, ValueList
+from spellbind.int_collections import ObservableIntList, IntValueList
+from spellbind.observable_sequences import ObservableList
 
 
-@pytest.mark.parametrize("constructor", [ObservableList, ValueList])
+@pytest.mark.parametrize("constructor", [ObservableList, ObservableIntList, IntValueList])
 def test_reverse_unobserved(constructor):
     observable_list = constructor([1, 2, 3])
     observable_list.reverse()
@@ -13,7 +14,7 @@ def test_reverse_unobserved(constructor):
     assert observable_list.length_value.value == 3
 
 
-@pytest.mark.parametrize("constructor", [ObservableList, ValueList])
+@pytest.mark.parametrize("constructor", [ObservableList, ObservableIntList, IntValueList])
 def test_reverse_notifies(constructor):
     observable_list = constructor([1, 2, 3])
     observers = ValueSequenceObservers(observable_list)
@@ -24,7 +25,7 @@ def test_reverse_notifies(constructor):
     observers.assert_single_action(reverse_action())
 
 
-@pytest.mark.parametrize("constructor", [ObservableList, ValueList])
+@pytest.mark.parametrize("constructor", [ObservableList, ObservableIntList, IntValueList])
 def test_reverse_empty_does_not_notify(constructor):
     observable_list = constructor([])
     observers = ValueSequenceObservers(observable_list)
@@ -34,7 +35,7 @@ def test_reverse_empty_does_not_notify(constructor):
     observers.assert_not_called()
 
 
-@pytest.mark.parametrize("constructor", [ObservableList, ValueList])
+@pytest.mark.parametrize("constructor", [ObservableList, ObservableIntList, IntValueList])
 def test_reverse_one_element_list_does_not_notify(constructor):
     observable_list = constructor([1])
     observers = ValueSequenceObservers(observable_list)

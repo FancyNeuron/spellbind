@@ -4,10 +4,11 @@ from conftest import OneParameterObserver, ValueSequenceObservers, \
     assert_length_changed_during_action_events_but_notifies_after
 from spellbind.actions import clear_action
 from spellbind.int_values import IntVariable
-from spellbind.sequences import ObservableList, ValueList
+from spellbind.observable_sequences import ObservableList
+from spellbind.int_collections import ObservableIntList, IntValueList
 
 
-@pytest.mark.parametrize("constructor", [ObservableList, ValueList])
+@pytest.mark.parametrize("constructor", [ObservableList, ObservableIntList, IntValueList])
 def test_clear_unobserved(constructor):
     observable_list = constructor([1, 2, 3])
     observable_list.clear()
@@ -15,7 +16,7 @@ def test_clear_unobserved(constructor):
     assert observable_list.length_value.value == 0
 
 
-@pytest.mark.parametrize("constructor", [ObservableList, ValueList])
+@pytest.mark.parametrize("constructor", [ObservableList, ObservableIntList, IntValueList])
 def test_clear_notifies(constructor):
     observable_list = constructor([1, 2, 3])
     observers = ValueSequenceObservers(observable_list)
@@ -26,7 +27,7 @@ def test_clear_notifies(constructor):
     observers.assert_single_action(clear_action())
 
 
-@pytest.mark.parametrize("constructor", [ObservableList, ValueList])
+@pytest.mark.parametrize("constructor", [ObservableList, ObservableIntList, IntValueList])
 def test_clear_empty_does_not_notify(constructor):
     observable_list = constructor([])
     observers = OneParameterObserver(observable_list)
@@ -36,7 +37,7 @@ def test_clear_empty_does_not_notify(constructor):
     observers.assert_not_called()
 
 
-@pytest.mark.parametrize("constructor", [ObservableList, ValueList])
+@pytest.mark.parametrize("constructor", [ObservableList, ObservableIntList, IntValueList])
 def test_clear_length_already_set_but_notifies_after(constructor):
     observable_list = constructor([1, 2, 3])
     with assert_length_changed_during_action_events_but_notifies_after(observable_list, 0):
@@ -45,7 +46,7 @@ def test_clear_length_already_set_but_notifies_after(constructor):
 
 def test_clear_value_list_changing_value_does_not_notify():
     variable = IntVariable(3)
-    value_list = ValueList([1, 2, variable])
+    value_list = IntValueList([1, 2, variable])
     observers = ValueSequenceObservers(value_list)
     value_list.clear()
     variable.value = 4

@@ -1,78 +1,16 @@
 from contextlib import contextmanager
-from typing import Any
+from typing import Any, Sequence, Callable
 from typing import Iterable, overload, Collection
 from unittest.mock import Mock
 
 import pytest
+from typing_extensions import TypeVar
 
-from spellbind.actions import SequenceDeltaAction, CollectionAction, DeltaAction
-from spellbind.collections import ObservableCollection
-from spellbind.sequences import ObservableSequence, ObservableList
+from spellbind.actions import AtIndexDeltaAction, CollectionAction, DeltaAction
+from spellbind.observable_collections import ObservableCollection
+from spellbind.observable_sequences import ObservableSequence, ValueSequence
 
-
-# PROJECT_ROOT = Path(__file__).parent.parent
-# PROJECT_SRC = PROJECT_ROOT / "src"
-
-
-# def has_override_decorator(method: Any) -> bool:
-#     """Check if a method has the @override decorator."""
-#     try:
-#         from typing import get_overloads
-#         overloads = get_overloads(method)
-#         if overloads:
-#             return any(hasattr(o, "__override__") for o in overloads)
-#         return hasattr(method, "__override__")
-#     except (ImportError, AttributeError):
-#         return getattr(method, "__override__", False)
-#
-#
-# def get_overridden_methods(cls: Type) -> Dict[str, Tuple[Any, Type]]:
-#     """Find methods that override methods from parent classes."""
-#     overridden = {}
-#
-#     for base in cls.__bases__:
-#         if base is object:
-#             continue
-#
-#         for name, method in inspect.getmembers(cls, inspect.isfunction):
-#             if name.startswith("__") and name.endswith("__"):
-#                 continue
-#
-#             if hasattr(base, name) and callable(getattr(base, name)):
-#                 overridden[name] = (method, base)
-#
-#     return overridden
-#
-#
-# def get_all_classes(module_path: Path) -> List[Type]:
-#     """Recursively collect all classes from Python modules."""
-#     import importlib.util
-#     import sys
-#
-#     classes = []
-#
-#     for path in module_path.glob("**/*.py"):
-#         if path.name.startswith("_") or "test" in str(path):
-#             continue
-#
-#         # Calculate module name
-#         relative_path = path.relative_to(module_path)
-#         module_name = str(relative_path.with_suffix("")).replace("/", ".")
-#
-#         try:
-#             spec = importlib.util.spec_from_file_location(module_name, path)
-#             if spec and spec.loader:
-#                 module = importlib.util.module_from_spec(spec)
-#                 sys.modules[module_name] = module
-#                 spec.loader.exec_module(module)
-#
-#                 for name, obj in inspect.getmembers(module):
-#                     if inspect.isclass(obj) and obj.__module__ == module_name:
-#                         classes.append(obj)
-#         except Exception:
-#             continue
-#
-#     return classes
+_S = TypeVar("_S")
 
 
 class Call:
@@ -210,8 +148,12 @@ class ValueSequenceObservers(Observers):
     def __init__(self, value_sequence: ObservableSequence):
         self.on_change_observer = OneParameterObserver()
         self.delta_observer = OneParameterObserver()
-        value_sequence.on_change.observe(self.on_change_observer)
-        value_sequence.delta_observable.observe_single(self.delta_observer)
+        if isinstance(value_sequence, ValueSequence):
+            value_sequence.on_value_change.observe(self.on_change_observer)
+            value_sequence.value_delta_observable.observe_single(self.delta_observer)
+        else:
+            value_sequence.on_change.observe(self.on_change_observer)
+            value_sequence.delta_observable.observe_single(self.delta_observer)
         super().__init__(self.on_change_observer, self.delta_observer)
 
     def assert_added_calls(self, *expected_adds: Any | tuple[int, Any]):
@@ -229,10 +171,10 @@ class ValueSequenceObservers(Observers):
             assert isinstance(action, DeltaAction)
             if len(expected_call) == 2:
                 expected_value, expected_added = expected_call
-                assert not isinstance(action, SequenceDeltaAction)
+                assert not isinstance(action, AtIndexDeltaAction)
             elif len(expected_call) == 3:
                 expected_index, expected_value, expected_added = expected_call
-                assert isinstance(action, SequenceDeltaAction)
+                assert isinstance(action, AtIndexDeltaAction)
                 if not action.index == expected_index:
                     pytest.fail(f"Error call {i}. Expected index {expected_index}, got {action.index}")
             else:
@@ -262,3 +204,15 @@ def assert_length_changed_during_action_events_but_notifies_after(collection: Ob
     collection.length_value.observe(lambda i: events.append(f"length set to {expected_length}"))
     yield
     assert events == ["changed", f"length set to {expected_length}"]
+
+
+def values_factories() -> Sequence[Callable[[_S, ...], Iterable[_S]]]:
+    return [
+        lambda *values: tuple(values),
+        lambda *values: list(values),
+        lambda *values: (value for value in values),
+    ]
+
+
+def void_observer(*args, **kwargs):
+    pass

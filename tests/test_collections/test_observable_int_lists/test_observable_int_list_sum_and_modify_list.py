@@ -1,10 +1,13 @@
+import pytest
+
 from conftest import OneParameterObserver
-from spellbind.int_collections import ObservableIntList
+from spellbind.int_collections import ObservableIntList, IntValueList
 
 
-def test_sum_int_list_append_sequentially():
-    int_list = ObservableIntList([1, 2, 3])
-    summed = int_list.sum()
+@pytest.mark.parametrize("constructor", [ObservableIntList, IntValueList])
+def test_sum_int_list_append_sequentially(constructor):
+    int_list = constructor([1, 2, 3])
+    summed = int_list.summed
     observer = OneParameterObserver()
     summed.observe(observer)
     assert summed.value == 6
@@ -19,7 +22,7 @@ def test_sum_int_list_append_sequentially():
 
 def test_sum_int_list_clear():
     int_list = ObservableIntList([1, 2, 3])
-    summed = int_list.sum()
+    summed = int_list.summed
     observer = OneParameterObserver()
     summed.observe(observer)
     assert summed.value == 6
@@ -30,7 +33,7 @@ def test_sum_int_list_clear():
 
 def test_sum_int_list_del_sequentially():
     int_list = ObservableIntList([1, 2, 3])
-    summed = int_list.sum()
+    summed = int_list.summed
     observer = OneParameterObserver()
     summed.observe(observer)
     assert summed.value == 6
@@ -45,7 +48,7 @@ def test_sum_int_list_del_sequentially():
 
 def test_sum_int_list_del_slice():
     int_list = ObservableIntList([1, 2, 3, 4, 5])
-    summed = int_list.sum()
+    summed = int_list.summed
     observer = OneParameterObserver()
     summed.observe(observer)
     assert summed.value == 15
@@ -56,7 +59,7 @@ def test_sum_int_list_del_slice():
 
 def test_sum_int_list_extend():
     int_list = ObservableIntList([1, 2, 3])
-    summed = int_list.sum()
+    summed = int_list.summed
     observer = OneParameterObserver()
     summed.observe(observer)
     assert summed.value == 6
@@ -69,7 +72,7 @@ def test_sum_int_list_extend():
 
 def test_sum_int_list_insert():
     int_list = ObservableIntList([1, 2, 3])
-    summed = int_list.sum()
+    summed = int_list.summed
     observer = OneParameterObserver()
     summed.observe(observer)
     assert summed.value == 6
@@ -84,7 +87,7 @@ def test_sum_int_list_insert():
 
 def test_sum_int_list_insert_all():
     int_list = ObservableIntList([1, 2, 3])
-    summed = int_list.sum()
+    summed = int_list.summed
     observer = OneParameterObserver()
     summed.observe(observer)
     assert summed.value == 6
@@ -95,7 +98,7 @@ def test_sum_int_list_insert_all():
 
 def test_sum_int_list_setitem():
     int_list = ObservableIntList([1, 2, 3])
-    summed = int_list.sum()
+    summed = int_list.summed
     observer = OneParameterObserver()
     summed.observe(observer)
     assert summed.value == 6
@@ -110,7 +113,7 @@ def test_sum_int_list_setitem():
 
 def test_sum_int_list_set_slice():
     int_list = ObservableIntList([1, 2, 3])
-    summed = int_list.sum()
+    summed = int_list.summed
     observer = OneParameterObserver()
     summed.observe(observer)
     assert summed.value == 6
@@ -121,7 +124,7 @@ def test_sum_int_list_set_slice():
 
 def test_sum_int_list_reverse():
     int_list = ObservableIntList([1, 2, 3])
-    summed = int_list.sum()
+    summed = int_list.summed
     observer = OneParameterObserver()
     summed.observe(observer)
     assert summed.value == 6

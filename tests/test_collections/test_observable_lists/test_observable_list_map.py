@@ -1,13 +1,13 @@
 import pytest
 
 from conftest import ValueSequenceObservers, assert_length_changed_during_action_events_but_notifies_after
-from spellbind.actions import reverse_action, InsertAllAction, \
-    SimpleRemoveAtIndexAction, SimpleInsertAction, \
+from spellbind.actions import reverse_action, SimpleRemoveAtIndexAction, SimpleInsertAction, \
     SimpleSetAtIndexAction, SimpleInsertAllAction, SimpleRemoveAtIndicesAction, SimpleExtendAction, clear_action
-from spellbind.sequences import ObservableList, ValueList
+from spellbind.observable_sequences import ObservableList
+from spellbind.str_collections import ObservableStrList
 
 
-@pytest.mark.parametrize("constructor", [ObservableList, ValueList])
+@pytest.mark.parametrize("constructor", [ObservableList, ObservableStrList])
 def test_map_str_list_lengths_set_item_unobserved(constructor):
     observable_list = constructor(["apple", "banana", "fig"])
     mapped = observable_list.map(lambda x: len(x))
@@ -16,7 +16,7 @@ def test_map_str_list_lengths_set_item_unobserved(constructor):
     assert list(mapped) == [5, 9, 3]
 
 
-@pytest.mark.parametrize("constructor", [ObservableList, ValueList])
+@pytest.mark.parametrize("constructor", [ObservableList, ObservableStrList])
 def test_map_str_list_to_lengths_append(constructor):
     observable_list = constructor(["apple", "banana", "fig"])
     mapped = observable_list.map(lambda x: len(x))
@@ -28,7 +28,7 @@ def test_map_str_list_to_lengths_append(constructor):
     mapped_observers.assert_single_action(SimpleInsertAction(3, 9))
 
 
-@pytest.mark.parametrize("constructor", [ObservableList, ValueList])
+@pytest.mark.parametrize("constructor", [ObservableList, ObservableStrList])
 def test_map_str_list_to_lengths_clear(constructor):
     observable_list = constructor(["apple", "banana", "fig"])
     mapped = observable_list.map(lambda x: len(x))
@@ -40,7 +40,7 @@ def test_map_str_list_to_lengths_clear(constructor):
     mapped_observers.assert_single_action(clear_action())
 
 
-@pytest.mark.parametrize("constructor", [ObservableList, ValueList])
+@pytest.mark.parametrize("constructor", [ObservableList, ObservableStrList])
 def test_map_str_list_to_lengths_del_item(constructor):
     observable_list = constructor(["apple", "banana", "fig"])
     mapped = observable_list.map(lambda x: len(x))
@@ -52,7 +52,7 @@ def test_map_str_list_to_lengths_del_item(constructor):
     mapped_observers.assert_single_action(SimpleRemoveAtIndexAction(1, 6))
 
 
-@pytest.mark.parametrize("constructor", [ObservableList, ValueList])
+@pytest.mark.parametrize("constructor", [ObservableList, ObservableStrList])
 def test_map_str_list_to_lengths_del_slice(constructor):
     observable_list = constructor(["apple", "banana", "fig", "plum"])
     mapped = observable_list.map(lambda x: len(x))
@@ -64,7 +64,7 @@ def test_map_str_list_to_lengths_del_slice(constructor):
     mapped_observers.assert_single_action(SimpleRemoveAtIndicesAction(((1, 6), (2, 3))))
 
 
-@pytest.mark.parametrize("constructor", [ObservableList, ValueList])
+@pytest.mark.parametrize("constructor", [ObservableList, ObservableStrList])
 def test_map_str_list_to_lengths_extend(constructor):
     observable_list = constructor(["apple", "banana", "fig"])
     mapped = observable_list.map(lambda x: len(x))
@@ -76,7 +76,7 @@ def test_map_str_list_to_lengths_extend(constructor):
     mapped_observers.assert_single_action(SimpleExtendAction(3, (9, 7)))
 
 
-@pytest.mark.parametrize("constructor", [ObservableList, ValueList])
+@pytest.mark.parametrize("constructor", [ObservableList, ObservableStrList])
 def test_map_str_list_to_lengths_insert(constructor):
     observable_list = constructor(["apple", "banana", "fig"])
     mapped = observable_list.map(lambda x: len(x))
@@ -88,7 +88,7 @@ def test_map_str_list_to_lengths_insert(constructor):
     mapped_observers.assert_single_action(SimpleInsertAction(1, 9))
 
 
-@pytest.mark.parametrize("constructor", [ObservableList, ValueList])
+@pytest.mark.parametrize("constructor", [ObservableList, ObservableStrList])
 def test_map_str_list_to_lengths_insert_all(constructor):
     observable_list = constructor(["apple", "banana", "fig"])
     mapped = observable_list.map(lambda x: len(x))
@@ -100,7 +100,7 @@ def test_map_str_list_to_lengths_insert_all(constructor):
     mapped_observers.assert_single_action(SimpleInsertAllAction(((1, 9), (3, 7))))
 
 
-@pytest.mark.parametrize("constructor", [ObservableList, ValueList])
+@pytest.mark.parametrize("constructor", [ObservableList, ObservableStrList])
 def test_map_str_list_to_lengths_insert_all_out_of_order(constructor):
     observable_list = constructor(["apple", "banana", "fig", "plum"])
     mapped = observable_list.map(lambda x: len(x))
@@ -112,7 +112,7 @@ def test_map_str_list_to_lengths_insert_all_out_of_order(constructor):
     mapped_observers.assert_single_action(SimpleInsertAllAction(((1, 9), (3, 7))))
 
 
-@pytest.mark.parametrize("constructor", [ObservableList, ValueList])
+@pytest.mark.parametrize("constructor", [ObservableList, ObservableStrList])
 def test_map_str_list_to_lengths_pop(constructor):
     observable_list = constructor(["apple", "banana", "fig"])
     mapped = observable_list.map(lambda x: len(x))
@@ -125,7 +125,7 @@ def test_map_str_list_to_lengths_pop(constructor):
     mapped_observers.assert_single_action(SimpleRemoveAtIndexAction(1, 6))
 
 
-@pytest.mark.parametrize("constructor", [ObservableList, ValueList])
+@pytest.mark.parametrize("constructor", [ObservableList, ObservableStrList])
 def test_map_str_list_to_lengths_remove(constructor):
     observable_list = constructor(["apple", "banana", "fig"])
     mapped = observable_list.map(lambda x: len(x))
@@ -137,7 +137,7 @@ def test_map_str_list_to_lengths_remove(constructor):
     mapped_observers.assert_single_action(SimpleRemoveAtIndexAction(1, 6))
 
 
-@pytest.mark.parametrize("constructor", [ObservableList, ValueList])
+@pytest.mark.parametrize("constructor", [ObservableList, ObservableStrList])
 def test_map_str_list_to_lengths_reverse(constructor):
     observable_list = constructor(["apple", "banana", "fig"])
     mapped = observable_list.map(lambda x: len(x))
@@ -149,7 +149,7 @@ def test_map_str_list_to_lengths_reverse(constructor):
     mapped_observers.assert_single_action(reverse_action())
 
 
-@pytest.mark.parametrize("constructor", [ObservableList, ValueList])
+@pytest.mark.parametrize("constructor", [ObservableList, ObservableStrList])
 def test_map_str_list_to_lengths_set_item(constructor):
     observable_list = constructor(["apple", "banana", "fig"])
     mapped = observable_list.map(lambda x: len(x))
@@ -161,7 +161,7 @@ def test_map_str_list_to_lengths_set_item(constructor):
     mapped_observers.assert_single_action(SimpleSetAtIndexAction(1, old_item=6, new_item=9))
 
 
-@pytest.mark.parametrize("constructor", [ObservableList, ValueList])
+@pytest.mark.parametrize("constructor", [ObservableList, ObservableStrList])
 def test_map_str_list_to_lengths_get_item(constructor):
     observable_list = constructor(["apple", "banana", "fig"])
     mapped = observable_list.map(lambda x: len(x))
@@ -170,7 +170,7 @@ def test_map_str_list_to_lengths_get_item(constructor):
     assert mapped[2] == 3
 
 
-@pytest.mark.parametrize("constructor", [ObservableList, ValueList])
+@pytest.mark.parametrize("constructor", [ObservableList, ObservableStrList])
 def test_map_length_already_set_but_notifies_after(constructor):
     observable_list = constructor(["apple", "banana", "fig"])
     mapped = observable_list.map(lambda x: len(x))

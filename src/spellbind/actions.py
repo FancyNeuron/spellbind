@@ -118,7 +118,42 @@ class SimpleRemoveOneAction(RemoveOneAction[_S_co], Generic[_S_co]):
         return self._item
 
 
-class ChangedAction(DeltasAction[_S_co], Generic[_S_co], ABC):
+class ElementsChangedAction(DeltasAction[_S_co], Generic[_S_co], ABC):
+    @property
+    @abstractmethod
+    def changes(self) -> Iterable[OneElementChangedAction[_S_co]]: ...
+
+    @property
+    def delta_actions(self) -> tuple[DeltaAction[_S_co], ...]:
+        return tuple(itertools.chain.from_iterable(
+            (SimpleRemoveOneAction(change.old_item), SimpleAddOneAction(change.new_item))
+            for change in self.changes
+        ))
+
+    def map(self, transformer: Callable[[_S_co], _T]) -> ElementsChangedAction[_T]:
+        return SimpleElementsChangedAction(
+            changes=tuple(change.map(transformer) for change in self.changes)
+        )
+
+
+class SimpleElementsChangedAction(ElementsChangedAction[_S_co], Generic[_S_co]):
+    def __init__(self, changes: tuple[OneElementChangedAction[_S_co], ...]):
+        self._changes = changes
+
+    @property
+    def changes(self) -> Iterable[OneElementChangedAction[_S_co]]:
+        return self._changes
+
+    def __eq__(self, other):
+        if not isinstance(other, ElementsChangedAction):
+            return NotImplemented
+        return self.changes == other.changes
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}(changes={self.changes})"
+
+
+class OneElementChangedAction(DeltasAction[_S_co], Generic[_S_co], ABC):
     @property
     @abstractmethod
     def new_item(self) -> _S_co: ...
@@ -131,11 +166,11 @@ class ChangedAction(DeltasAction[_S_co], Generic[_S_co], ABC):
     def delta_actions(self) -> tuple[DeltaAction[_S_co], ...]:
         return SimpleRemoveOneAction(self.old_item), SimpleAddOneAction(self.new_item)
 
-    def map(self, transformer: Callable[[_S_co], _T]) -> DeltasAction[_T]:
-        return SimpleChangedAction(new_item=transformer(self.new_item), old_item=transformer(self.old_item))
+    def map(self, transformer: Callable[[_S_co], _T]) -> OneElementChangedAction[_T]:
+        return SimpleOneElementChangedAction(new_item=transformer(self.new_item), old_item=transformer(self.old_item))
 
 
-class SimpleChangedAction(ChangedAction[_S_co], Generic[_S_co]):
+class SimpleOneElementChangedAction(OneElementChangedAction[_S_co], Generic[_S_co]):
     def __init__(self, *, new_item: _S_co, old_item: _S_co):
         self._new_item = new_item
         self._old_item = old_item
@@ -149,7 +184,7 @@ class SimpleChangedAction(ChangedAction[_S_co], Generic[_S_co]):
         return self._old_item
 
     def __eq__(self, other):
-        if not isinstance(other, ChangedAction):
+        if not isinstance(other, OneElementChangedAction):
             return NotImplemented
         return (self.new_item == other.new_item and
                 self.old_item == other.old_item)
@@ -183,29 +218,29 @@ class AtIndexAction(SequenceAction[_S_co], Generic[_S_co]):
         return False
 
 
-class SequenceDeltasAction(SequenceAction[_S_co], DeltasAction[_S_co], Generic[_S_co], ABC):
+class AtIndicesDeltasAction(SequenceAction[_S_co], DeltasAction[_S_co], Generic[_S_co], ABC):
     @property
     @abstractmethod
-    def delta_actions(self) -> tuple[SequenceDeltaAction[_S_co], ...]: ...
+    def delta_actions(self) -> tuple[AtIndexDeltaAction[_S_co], ...]: ...
 
-    def map(self, transformer: Callable[[_S_co], _T]) -> SequenceDeltasAction[_T]:
+    def map(self, transformer: Callable[[_S_co], _T]) -> AtIndicesDeltasAction[_T]:
         mapped = tuple(action.map(transformer) for action in self.delta_actions)
-        return SimpleSequenceDeltasAction(mapped)
+        return SimpleAtIndicesDeltasAction(mapped)
 
 
-class SequenceDeltaAction(AtIndexAction[_S_co], DeltaAction[_S_co], SequenceDeltasAction[_S_co], Generic[_S_co], ABC):
+class AtIndexDeltaAction(AtIndexAction[_S_co], DeltaAction[_S_co], AtIndicesDeltasAction[_S_co], Generic[_S_co], ABC):
     @property
-    def delta_actions(self) -> tuple[SequenceDeltaAction[_S_co], ...]:
+    def delta_actions(self) -> tuple[AtIndexDeltaAction[_S_co], ...]:
         return (self,)
 
     @abstractmethod
-    def map(self, transformer: Callable[[_S_co], _T]) -> SequenceDeltaAction[_T]: ...
+    def map(self, transformer: Callable[[_S_co], _T]) -> AtIndexDeltaAction[_T]: ...
 
     def __repr__(self):
         return f"{self.__class__.__name__}(index={self.index}, value={self.value})"
 
 
-class InsertAction(SequenceDeltaAction[_S_co], AddOneAction[_S_co], Generic[_S_co], ABC):
+class InsertAction(AtIndexDeltaAction[_S_co], AddOneAction[_S_co], Generic[_S_co], ABC):
     def map(self, transformer: Callable[[_S_co], _T]) -> InsertAction[_T]:
         return SimpleInsertAction(self.index, transformer(self.value))
 
@@ -229,13 +264,13 @@ class SimpleInsertAction(InsertAction[_S_co], Generic[_S_co]):
         return self.index == other.index and self.value == other.value
 
 
-class InsertAllAction(SequenceDeltasAction[_S_co], Generic[_S_co], ABC):
+class InsertAllAction(AtIndicesDeltasAction[_S_co], Generic[_S_co], ABC):
     @property
     @abstractmethod
     def index_with_items(self) -> tuple[tuple[int, _S_co], ...]: ...
 
     @property
-    def delta_actions(self) -> tuple[SequenceDeltaAction[_S_co], ...]:
+    def delta_actions(self) -> tuple[AtIndexDeltaAction[_S_co], ...]:
         return tuple(SimpleInsertAction(index + i, item) for i, (index, item) in enumerate(self.index_with_items))
 
     def map(self, transformer: Callable[[_S_co], _T]) -> InsertAllAction[_T]:
@@ -256,7 +291,7 @@ class SimpleInsertAllAction(InsertAllAction[_S_co], Generic[_S_co]):
         return self._index_with_items
 
 
-class RemoveAtIndexAction(SequenceDeltaAction[_S_co], RemoveOneAction[_S_co], Generic[_S_co], ABC):
+class RemoveAtIndexAction(AtIndexDeltaAction[_S_co], RemoveOneAction[_S_co], Generic[_S_co], ABC):
     def map(self, transformer: Callable[[_S_co], _T]) -> RemoveAtIndexAction[_T]:
         return SimpleRemoveAtIndexAction(self.index, transformer(self.value))
 
@@ -280,7 +315,7 @@ class SimpleRemoveAtIndexAction(RemoveAtIndexAction[_S_co], RemoveOneAction[_S_c
         return self._item
 
 
-class RemoveAtIndicesAction(SequenceDeltasAction[_S_co], Generic[_S_co], ABC):
+class RemoveAtIndicesAction(AtIndicesDeltasAction[_S_co], Generic[_S_co], ABC):
     @property
     @abstractmethod
     def removed_elements_with_index(self) -> tuple[tuple[int, _S_co], ...]: ...
@@ -310,20 +345,20 @@ class SimpleRemoveAtIndicesAction(RemoveAtIndicesAction[_S_co], Generic[_S_co]):
         return self._removed_elements_with_index
 
     @property
-    def delta_actions(self) -> tuple[SequenceDeltaAction[_S_co], ...]:
+    def delta_actions(self) -> tuple[AtIndexDeltaAction[_S_co], ...]:
         return tuple(SimpleRemoveAtIndexAction(index - i, item) for i, (index, item) in enumerate(self._removed_elements_with_index))
 
 
-class SimpleSequenceDeltasAction(SequenceDeltasAction[_S_co], Generic[_S_co]):
-    def __init__(self, delta_actions: tuple[SequenceDeltaAction[_S_co], ...]):
+class SimpleAtIndicesDeltasAction(AtIndicesDeltasAction[_S_co], Generic[_S_co]):
+    def __init__(self, delta_actions: tuple[AtIndexDeltaAction[_S_co], ...]):
         self._delta_actions = delta_actions
 
     @property
-    def delta_actions(self) -> tuple[SequenceDeltaAction[_S_co], ...]:
+    def delta_actions(self) -> tuple[AtIndexDeltaAction[_S_co], ...]:
         return self._delta_actions
 
 
-class SetAtIndexAction(AtIndexAction[_S_co], SequenceDeltasAction[_S_co], ChangedAction[_S_co], Generic[_S_co], ABC):
+class SetAtIndexAction(AtIndexAction[_S_co], AtIndicesDeltasAction[_S_co], OneElementChangedAction[_S_co], Generic[_S_co], ABC):
     @property
     @abstractmethod
     def index(self) -> int: ...
@@ -337,11 +372,11 @@ class SetAtIndexAction(AtIndexAction[_S_co], SequenceDeltasAction[_S_co], Change
     def old_item(self) -> _S_co: ...
 
     @property
-    def delta_actions(self) -> tuple[SequenceDeltaAction[_S_co], ...]:
+    def delta_actions(self) -> tuple[AtIndexDeltaAction[_S_co], ...]:
         return (SimpleRemoveAtIndexAction(self.index, self.old_item),
                 SimpleInsertAction(self.index, self.new_item))
 
-    def map(self, transformer: Callable[[_S_co], _T]) -> SequenceDeltasAction[_T]:
+    def map(self, transformer: Callable[[_S_co], _T]) -> SetAtIndexAction[_T]:
         return SimpleSetAtIndexAction(self.index, old_item=transformer(self.old_item), new_item=transformer(self.new_item))
 
     def __repr__(self):
@@ -374,7 +409,7 @@ class SimpleSetAtIndexAction(SetAtIndexAction[_S_co], Generic[_S_co]):
         return self._old_item
 
 
-class SliceSetAction(SequenceDeltasAction[_S_co], Generic[_S_co], ABC):
+class SliceSetAction(AtIndicesDeltasAction[_S_co], Generic[_S_co], ABC):
     @property
     @abstractmethod
     def indices(self) -> tuple[int, ...]: ...
@@ -427,20 +462,20 @@ class SimpleSliceSetAction(SliceSetAction[_S_co], Generic[_S_co]):
         return self._old_items
 
     @property
-    def delta_actions(self) -> tuple[SequenceDeltaAction[_S_co], ...]:
+    def delta_actions(self) -> tuple[AtIndexDeltaAction[_S_co], ...]:
         return tuple(itertools.chain(self._remove_delta_actions, self._insert_delta_actions))
 
     @property
-    def _remove_delta_actions(self) -> Iterable[SequenceDeltaAction[_S_co]]:
+    def _remove_delta_actions(self) -> Iterable[AtIndexDeltaAction[_S_co]]:
         return (SimpleRemoveAtIndexAction(index - i, item) for i, (index, item) in enumerate(zip(self._indices, self._old_items)))
 
     @property
-    def _insert_delta_actions(self) -> Iterable[SequenceDeltaAction[_S_co]]:
+    def _insert_delta_actions(self) -> Iterable[AtIndexDeltaAction[_S_co]]:
         first_index = self._indices[0]
         return (SimpleInsertAction(first_index + i, item) for i, item in enumerate(self._new_items))
 
 
-class SetAtIndicesAction(SequenceDeltasAction[_S_co], Generic[_S_co], ABC):
+class SetAtIndicesAction(AtIndicesDeltasAction[_S_co], Generic[_S_co], ABC):
     @property
     @abstractmethod
     def indices_with_new_and_old_items(self) -> tuple[tuple[int, _S_co, _S_co], ...]: ...
@@ -450,7 +485,7 @@ class SetAtIndicesAction(SequenceDeltasAction[_S_co], Generic[_S_co], ABC):
         return False
 
     @property
-    def delta_actions(self) -> tuple[SequenceDeltaAction[_S_co], ...]:
+    def delta_actions(self) -> tuple[AtIndexDeltaAction[_S_co], ...]:
         return tuple(itertools.chain.from_iterable(
             (SimpleRemoveAtIndexAction(index, old), SimpleInsertAction(index, new))
             for index, new, old in self.indices_with_new_and_old_items))
@@ -465,7 +500,6 @@ class SetAtIndicesAction(SequenceDeltasAction[_S_co], Generic[_S_co], ABC):
             return NotImplemented
         return self.indices_with_new_and_old_items == other.indices_with_new_and_old_items
 
-
     def __repr__(self):
         return f"{self.__class__.__name__}(indices_with_new_and_old_items={self.indices_with_new_and_old_items})"
 
@@ -479,7 +513,7 @@ class SimpleSetAtIndicesAction(SetAtIndicesAction[_S_co], Generic[_S_co]):
         return self._index_with_new_and_old_items
 
     @property
-    def delta_actions(self) -> tuple[SequenceDeltaAction[_S_co], ...]:
+    def delta_actions(self) -> tuple[AtIndexDeltaAction[_S_co], ...]:
         return tuple(itertools.chain.from_iterable(
             (SimpleRemoveAtIndexAction(index, old), SimpleInsertAction(index, new))
             for index, new, old in self._index_with_new_and_old_items))
@@ -494,7 +528,7 @@ class ReverseAction(SequenceAction[_S_co], Generic[_S_co]):
         return reverse_action()
 
 
-class ExtendAction(SequenceDeltasAction[_S_co], SequenceAction[_S_co], Generic[_S_co], ABC):
+class ExtendAction(AtIndicesDeltasAction[_S_co], SequenceAction[_S_co], Generic[_S_co], ABC):
     @property
     def is_permutation_only(self) -> bool:
         return False
@@ -508,7 +542,7 @@ class ExtendAction(SequenceDeltasAction[_S_co], SequenceAction[_S_co], Generic[_
     def old_sequence_length(self) -> int: ...
 
     @property
-    def delta_actions(self) -> tuple[SequenceDeltaAction[_S_co], ...]:
+    def delta_actions(self) -> tuple[AtIndexDeltaAction[_S_co], ...]:
         return tuple(SimpleInsertAction(i, item) for i, item in enumerate(self.items, start=self.old_sequence_length))
 
     def map(self, transformer: Callable[[_S_co], _T]) -> ExtendAction[_T]:

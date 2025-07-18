@@ -2,9 +2,10 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from contextlib import contextmanager
-from typing import TypeVar, Generic, Optional, Any, Iterable, TYPE_CHECKING, Callable, Sequence, ContextManager, \
+from typing import TypeVar, Generic, Optional, Iterable, TYPE_CHECKING, Callable, Sequence, ContextManager, \
     Generator
 
+from spellbind.deriveds import Derived
 from spellbind.event import BiEvent
 from spellbind.observables import Observer, ValueObserver, BiObservable, BiObserver, Subscription, void_bi_observable
 
@@ -35,14 +36,10 @@ class NotConstantError(Exception):
     pass
 
 
-class Value(Generic[_S], ABC):
+class Value(Generic[_S], Derived, ABC):
     @property
     @abstractmethod
     def value(self) -> _S: ...
-
-    @property
-    @abstractmethod
-    def derived_from(self) -> frozenset[Value]: ...
 
     @property
     @abstractmethod
@@ -61,25 +58,6 @@ class Value(Generic[_S], ABC):
 
     def is_observed(self, by: Callable | None = None) -> bool:
         return self.observable.is_observed(by=by)
-
-    @property
-    def deep_derived_from(self) -> Iterable[Value]:
-        found_derived = set()
-        derive_queue = [self]
-
-        while derive_queue:
-            current = derive_queue.pop(0)
-            for dependency in current.derived_from:
-                if dependency not in found_derived:
-                    found_derived.add(dependency)
-                    yield dependency
-                    derive_queue.append(dependency)
-
-    def is_dependent_on(self, value: Value[Any]) -> bool:
-        for dependency in self.deep_derived_from:
-            if value is dependency:
-                return True
-        return False
 
     def to_str(self) -> StrValue:
         from spellbind.str_values import ToStrValue
@@ -244,7 +222,7 @@ class SimpleVariable(Variable[_S], Generic[_S]):
     def bind_to(self, value: Value[_S], already_bound_ok: bool = False, bind_weakly: bool = True) -> None:
         if value is self:
             raise RecursionError("Cannot bind a Variable to itself.")
-        if value.is_dependent_on(self):
+        if value.is_derived_from(self):
             raise RecursionError("Circular binding detected.")
         if self._bound_to is not None:
             if not already_bound_ok:
@@ -294,14 +272,14 @@ class Constant(Value[_S], Generic[_S]):
         return void_bi_observable()
 
     @property
-    def derived_from(self) -> frozenset[Value]:
+    def derived_from(self) -> frozenset[Derived]:
         return EMPTY_FROZEN_SET
 
     @property
-    def deep_derived_from(self) -> Iterable[Value]:
+    def deep_derived_from(self) -> Iterable[Derived]:
         return EMPTY_FROZEN_SET
 
-    def is_dependent_on(self, value: Value[Any]) -> bool:
+    def is_derived_from(self, derived: Derived) -> bool:
         return False
 
     @property
