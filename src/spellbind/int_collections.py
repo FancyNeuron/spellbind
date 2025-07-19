@@ -5,7 +5,7 @@ from abc import ABC, abstractmethod
 from functools import cached_property
 from typing import Iterable, Callable, Any
 
-from typing_extensions import TypeIs
+from typing_extensions import TypeIs, override
 
 from spellbind.int_values import IntValue, IntConstant
 from spellbind.observable_collections import ObservableCollection, ReducedValue, CombinedValue, ValueCollection
@@ -66,6 +66,7 @@ class UnboxedIntValueSequence(UnboxedValueSequence[int], ObservableIntSequence):
 
 class IntValueSequence(ValueSequence[int], IntValueCollection, ABC):
     @cached_property
+    @override
     def unboxed(self) -> ObservableIntSequence:
         return UnboxedIntValueSequence(self)
 

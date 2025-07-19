@@ -3,6 +3,8 @@ from __future__ import annotations
 from abc import ABC
 from typing import Any, Generic, TypeVar, Callable, Iterable, TYPE_CHECKING
 
+from typing_extensions import override
+
 from spellbind.values import Value, OneToOneValue, SimpleVariable, Constant, \
     ManyToSameValue, ThreeToOneValue
 
@@ -44,6 +46,7 @@ class StrValue(Value[str], ABC):
         str_length: Callable[[str], int] = len
         return IntValue.derive_from_one(str_length, self)
 
+    @override
     def to_str(self) -> StrValue:
         return self
 
@@ -84,6 +87,7 @@ class StrConstant(Constant[str], StrValue):
     _cache: dict[str, StrConstant] = {}
 
     @classmethod
+    @override
     def of(cls, value: str, cache: bool = False) -> StrConstant:
         try:
             return cls._cache[value]
@@ -94,6 +98,7 @@ class StrConstant(Constant[str], StrValue):
             return constant
 
     @property
+    @override
     def length(self) -> IntConstant:
         from spellbind.int_values import IntConstant
         return IntConstant.of(len(self.value))
@@ -124,6 +129,7 @@ class ManyStrsToStrValue(ManyToSameValue[str], StrValue):
 
 class ThreeToStrValue(ThreeToOneValue[_S, _T, _U, str], StrValue, Generic[_S, _T, _U]):
     @staticmethod
+    @override
     def create(transformer: Callable[[_S, _T, _U], str],
                first: _S | Value[_S], second: _T | Value[_T], third: _U | Value[_U]) -> StrValue:
         return ThreeToStrValue(transformer, first, second, third)
