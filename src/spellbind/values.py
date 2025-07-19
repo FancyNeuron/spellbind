@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing_extensions import deprecated
+
 from abc import ABC, abstractmethod
 from contextlib import contextmanager
 from typing import TypeVar, Generic, Optional, Iterable, TYPE_CHECKING, Callable, Sequence, ContextManager, \
@@ -167,7 +169,11 @@ class Variable(Value[_S], Generic[_S], ABC):
     def value(self, new_value: _S) -> None: ...
 
     @abstractmethod
-    def bind_to(self, value: Value[_S], already_bound_ok: bool = False, bind_weakly: bool = True) -> None: ...
+    def bind(self, value: Value[_S], already_bound_ok: bool = False, bind_weakly: bool = True) -> None: ...
+
+    @deprecated("Use bind() instead")
+    def bind_to(self, value: Value[_S], already_bound_ok: bool = False, bind_weakly: bool = True) -> None:
+        return self.bind(value, already_bound_ok, bind_weakly)
 
     @abstractmethod
     def unbind(self, not_bound_ok: bool = False) -> None: ...
@@ -219,7 +225,7 @@ class SimpleVariable(Variable[_S], Generic[_S]):
     def observable(self) -> BiObservable[_S, _S]:
         return self._on_change
 
-    def bind_to(self, value: Value[_S], already_bound_ok: bool = False, bind_weakly: bool = True) -> None:
+    def bind(self, value: Value[_S], already_bound_ok: bool = False, bind_weakly: bool = True) -> None:
         if value is self:
             raise RecursionError("Cannot bind a Variable to itself.")
         if value.is_derived_from(self):

@@ -87,8 +87,8 @@ def test_simple_variable_bind_twice_to_same():
     variable = SimpleVariable("test")
     constant = Constant("value")
 
-    variable.bind_to(constant)
-    variable.bind_to(constant, already_bound_ok=True)
+    variable.bind(constant)
+    variable.bind(constant, already_bound_ok=True)
 
     assert variable.value == "value"
 
@@ -97,7 +97,7 @@ def test_simple_variable_bind_to_constant():
     variable = SimpleVariable("old")
     constant = Constant("new")
 
-    variable.bind_to(constant)
+    variable.bind(constant)
 
     assert variable.value == "new"
 
@@ -106,7 +106,7 @@ def test_simple_variable_bind_to_simple_variable():
     variable1 = SimpleVariable(100)
     variable2 = SimpleVariable(200)
 
-    variable1.bind_to(variable2)
+    variable1.bind(variable2)
 
     assert variable1.value == 200
 
@@ -116,10 +116,10 @@ def test_simple_variable_bind_already_bound_error():
     constant1 = Constant("value1")
     constant2 = Constant("value2")
 
-    variable.bind_to(constant1)
+    variable.bind(constant1)
 
     with pytest.raises(ValueError):
-        variable.bind_to(constant2)
+        variable.bind(constant2)
 
 
 def test_simple_variable_bind_already_bound_ok():
@@ -127,8 +127,8 @@ def test_simple_variable_bind_already_bound_ok():
     constant1 = Constant("value1")
     constant2 = Constant("value2")
 
-    variable.bind_to(constant1)
-    variable.bind_to(constant2, already_bound_ok=True)
+    variable.bind(constant1)
+    variable.bind(constant2, already_bound_ok=True)
 
     assert variable.value == "value2"
 
@@ -137,7 +137,7 @@ def test_simple_variable_change_after_unbind():
     variable = SimpleVariable("initial")
     constant = Constant("bound_value")
 
-    variable.bind_to(constant)
+    variable.bind(constant)
     variable.unbind()
     variable.value = "after_unbind"
 
@@ -148,7 +148,7 @@ def test_simple_variable_change_without_unbind_raises():
     variable = SimpleVariable("initial")
     constant = Constant("bound_value")
 
-    variable.bind_to(constant)
+    variable.bind(constant)
     with pytest.raises(ValueError):
         variable.value = "after_unbind"
 
@@ -157,7 +157,7 @@ def test_simple_variable_change_root_after_unbind():
     dependent = SimpleVariable("dependent")
     root = SimpleVariable("root")
 
-    dependent.bind_to(root)
+    dependent.bind(root)
     dependent.unbind()
     root.value = "new_root_value"
     assert dependent.value == "root"
@@ -184,7 +184,7 @@ def test_simple_variable_bind_updates_value():
 
     variable.observe(observer)
     constant = Constant(42)
-    variable.bind_to(constant)
+    variable.bind(constant)
 
     observer.assert_called_once_with(42)
 
@@ -194,7 +194,7 @@ def test_simple_variable_bound_value_changes_propagate():
     variable2 = SimpleVariable("initial")
     observer = OneParameterObserver()
 
-    variable1.bind_to(variable2)
+    variable1.bind(variable2)
     variable1.observe(observer)
     variable2.value = "propagated"
 
@@ -214,14 +214,14 @@ def test_simple_variable_bind_to_itself():
     variable = SimpleVariable("test")
 
     with pytest.raises(RecursionError):
-        variable.bind_to(variable)
+        variable.bind(variable)
 
 
 def test_simple_variable_set_value_while_bound_raises():
     variable = SimpleVariable("initial")
     constant = Constant("constant")
 
-    variable.bind_to(constant)
+    variable.bind(constant)
     with pytest.raises(ValueError):
         variable.value = "manual_value"
 
@@ -242,9 +242,9 @@ def test_simple_variable_rebind_after_unbind():
     constant1 = Constant("first")
     constant2 = Constant("second")
 
-    variable.bind_to(constant1)
+    variable.bind(constant1)
     variable.unbind()
-    variable.bind_to(constant2)
+    variable.bind(constant2)
 
     assert variable.value == "second"
 
@@ -252,7 +252,7 @@ def test_simple_variable_rebind_after_unbind():
 def test_bind_weak_reference_clears():
     root_var = SimpleVariable("root0")
     dependent_var = SimpleVariable("")
-    dependent_var.bind_to(root_var, bind_weakly=True)
+    dependent_var.bind(root_var, bind_weakly=True)
 
     values = []
     dependent_var.observe(lambda value: values.append(value))
@@ -268,7 +268,7 @@ def test_bind_weak_reference_clears():
 def test_bind_strong_reference_stays():
     root_var = SimpleVariable("root0")
     dependent_var = SimpleVariable("")
-    dependent_var.bind_to(root_var, bind_weakly=False)
+    dependent_var.bind(root_var, bind_weakly=False)
 
     values = []
     dependent_var.observe(lambda value: values.append(value))
@@ -286,8 +286,8 @@ def test_daisy_chain_variables_weak_reference_stays():
     middle_var = SimpleVariable("")
     dependent_var = SimpleVariable("")
 
-    middle_var.bind_to(root_var, bind_weakly=True)
-    dependent_var.bind_to(middle_var, bind_weakly=False)
+    middle_var.bind(root_var, bind_weakly=True)
+    dependent_var.bind(middle_var, bind_weakly=False)
 
     values = []
     dependent_var.observe(lambda value: values.append(value))

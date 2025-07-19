@@ -91,7 +91,7 @@ def test_bind_to_added_int_variables():
     v1 = IntVariable(2)
 
     variable = IntVariable(42)
-    variable.bind_to(v0 + v1)
+    variable.bind(v0 + v1)
     assert variable.value == 3
 
     v0.value = 5
@@ -104,7 +104,7 @@ def test_bind_and_unbind_to_added_int_variables():
     v1 = IntVariable(2)
 
     variable = IntVariable(42)
-    variable.bind_to(v0 + v1)
+    variable.bind(v0 + v1)
     v0.value = 5
 
     variable.unbind()
