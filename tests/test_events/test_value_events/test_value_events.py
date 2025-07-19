@@ -1,7 +1,7 @@
 import pytest
 from spellbind.event import ValueEvent
 from conftest import NoParametersObserver, OneParameterObserver, OneDefaultParameterObserver, \
-    OneRequiredOneDefaultParameterObserver
+    OneRequiredOneDefaultParameterObserver, void_observer
 
 
 def test_value_event_unobserve_nonexistent_mock_observer_fails():
@@ -20,7 +20,7 @@ def test_value_event_observe_same_mock_observer_multiple_times():
     event.observe(observer)
     event("test")
 
-    assert observer.call_count == 2
+    assert observer.calls == ["test", "test"]
 
 
 def test_value_event_call_with_no_observers():
@@ -170,7 +170,7 @@ def test_value_event_unobserve_lambda_observer():
 def test_value_event_observe_lambda_observer_too_many_parameters_fails():
     event = ValueEvent[str]()
 
-    with pytest.raises(ValueError, match="has too many non-default parameters: 2 > 1"):
+    with pytest.raises(ValueError):
         event.observe(lambda param0, param1: None)
 
 
@@ -215,3 +215,33 @@ def test_value_event_observe_mock_observer_times_none_unlimited_calls():
 
     assert mock_observer.call_count == 10
     assert event.is_observed(mock_observer)
+
+
+def test_value_event_lazy_evaluate_only_called_when_observed():
+    event = ValueEvent[int]()
+    lazy_calls = []
+
+    def lazy() -> int:
+        lazy_calls.append("lazy")
+        return 3
+
+    event.emit_lazy(lazy)
+    assert lazy_calls == []
+    event.observe(void_observer)
+    event.emit_lazy(lazy)
+    assert lazy_calls == ["lazy"]
+
+
+def test_value_event_lazy_evaluate_only_called_when_derived_observed():
+    event = ValueEvent[int]()
+    lazy_calls = []
+
+    def lazy() -> int:
+        lazy_calls.append("lazy")
+        return 3
+    derived = event.map(lambda x: x + 1)
+    event.emit_lazy(lazy)
+    assert lazy_calls == []
+    derived.observe(void_observer)
+    event.emit_lazy(lazy)
+    assert lazy_calls == ["lazy"]

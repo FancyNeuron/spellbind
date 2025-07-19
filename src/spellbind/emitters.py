@@ -1,6 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import TypeVar, Generic
-
+from typing import TypeVar, Generic, Iterable
 
 T = TypeVar("T")
 U = TypeVar("U")
@@ -14,7 +13,7 @@ class Emitter(ABC):
 
 class ValueEmitter(Generic[T], ABC):
     @abstractmethod
-    def __call__(self, value0: T) -> None: ...
+    def __call__(self, value: T) -> None: ...
 
 
 class BiEmitter(Generic[T, U], ABC):
@@ -25,3 +24,8 @@ class BiEmitter(Generic[T, U], ABC):
 class TriEmitter(Generic[T, U, S], ABC):
     @abstractmethod
     def __call__(self, value0: T, value1: U, value2: S) -> None: ...
+
+
+class ValuesEmitter(Generic[T], ABC):
+    @abstractmethod
+    def __call__(self, values: Iterable[T]) -> None: ...

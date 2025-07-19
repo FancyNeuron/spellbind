@@ -7,6 +7,11 @@ def _is_positional_parameter(param: Parameter) -> bool:
     return param.kind in (Parameter.POSITIONAL_ONLY, Parameter.POSITIONAL_OR_KEYWORD)
 
 
+def has_var_args(function: Callable) -> bool:
+    parameters = inspect.signature(function).parameters
+    return any(param.kind == Parameter.VAR_POSITIONAL for param in parameters.values())
+
+
 def count_positional_parameters(function: Callable) -> int:
     parameters = inspect.signature(function).parameters
     return sum(1 for parameter in parameters.values() if _is_positional_parameter(parameter))

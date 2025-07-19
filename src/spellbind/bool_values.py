@@ -146,10 +146,6 @@ class BoolConstant(BoolValue, Constant[bool]):
     def logical_not(self) -> BoolConstant:
         return BoolConstant.of(not self.value)
 
-    @property
-    def constant_value_or_raise(self) -> bool:
-        return self.value
-
 
 class BoolVariable(SimpleVariable[bool], BoolValue):
     pass

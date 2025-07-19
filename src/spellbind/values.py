@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import TypeVar, Generic, Optional, Any, Iterable, TYPE_CHECKING, Callable, Sequence
+from contextlib import contextmanager
+from typing import TypeVar, Generic, Optional, Iterable, TYPE_CHECKING, Callable, Sequence, ContextManager, \
+    Generator
 
-from spellbind.event import ValueEvent
-from spellbind.observables import ValueObservable, Observer, ValueObserver
+from spellbind.deriveds import Derived
+from spellbind.event import BiEvent
+from spellbind.observables import Observer, ValueObserver, BiObservable, BiObserver, Subscription, void_bi_observable
 
 if TYPE_CHECKING:
     from spellbind.str_values import StrValue  # pragma: no cover
@@ -33,42 +36,32 @@ class NotConstantError(Exception):
     pass
 
 
-class Value(ValueObservable[_S], Generic[_S], ABC):
+class Value(Generic[_S], Derived, ABC):
     @property
     @abstractmethod
     def value(self) -> _S: ...
 
-    @abstractmethod
-    def derived_from(self) -> frozenset[Value]: ...
-
     @property
-    def deep_derived_from(self) -> Iterable[Value]:
-        found_derived = set()
-        derive_queue = [self]
+    @abstractmethod
+    def observable(self) -> BiObservable[_S, _S]: ...
 
-        while derive_queue:
-            current = derive_queue.pop(0)
-            for dependency in current.derived_from():
-                if dependency not in found_derived:
-                    found_derived.add(dependency)
-                    yield dependency
-                    derive_queue.append(dependency)
+    def observe(self, observer: Observer | ValueObserver[_S] | BiObserver[_S, _S],
+                times: int | None = None) -> Subscription:
+        return self.observable.observe(observer=observer, times=times)
 
-    def is_dependent_on(self, value: Value[Any]) -> bool:
-        for dependency in self.deep_derived_from:
-            if value is dependency:
-                return True
-        return False
+    def weak_observe(self, observer: Observer | ValueObserver[_S] | BiObserver[_S, _S],
+                     times: int | None = None) -> Subscription:
+        return self.observable.weak_observe(observer=observer, times=times)
+
+    def unobserve(self, observer: Observer | ValueObserver[_S] | BiObserver[_S, _S]) -> None:
+        self.observable.unobserve(observer=observer)
+
+    def is_observed(self, by: Callable | None = None) -> bool:
+        return self.observable.is_observed(by=by)
 
     def to_str(self) -> StrValue:
         from spellbind.str_values import ToStrValue
         return ToStrValue(self)
-
-    def __str__(self) -> str:
-        return str(self.value)
-
-    def __repr__(self) -> str:
-        return f"{self.__class__.__name__}({self.value!r})"
 
     def map(self, transformer: Callable[[_S], _T]) -> Value[_T]:
         return OneToOneValue(transformer, self)
@@ -95,6 +88,12 @@ class Value(ValueObservable[_S], Generic[_S], ABC):
 
     def decompose_operands(self, operator_: Callable) -> Sequence[Value[_S] | _S]:
         return (self,)
+
+    def __str__(self) -> str:
+        return str(self.value)
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}({self.value!r})"
 
     @classmethod
     def derive_from_two_with_factory(
@@ -173,16 +172,19 @@ class Variable(Value[_S], Generic[_S], ABC):
     @abstractmethod
     def unbind(self, not_bound_ok: bool = False) -> None: ...
 
+    @abstractmethod
+    def set_delay_notify(self, new_value: _S) -> ContextManager[None]: ...
+
 
 class SimpleVariable(Variable[_S], Generic[_S]):
     _bound_to_set: frozenset[Value[_S]]
-    _on_change: ValueEvent[_S]
+    _on_change: BiEvent[_S, _S]
     _bound_to: Optional[Value[_S]]
 
     def __init__(self, value: _S):
         self._bound_to_set = EMPTY_FROZEN_SET
         self._value = value
-        self._on_change = ValueEvent()
+        self._on_change = BiEvent[_S, _S]()
         self._bound_to = None
 
     @property
@@ -195,27 +197,32 @@ class SimpleVariable(Variable[_S], Generic[_S]):
             raise ValueError("Cannot set value of a Variable that is bound to a Value.")
         self._set_value_bypass_bound_check(new_value)
 
+    @contextmanager
+    def set_delay_notify(self, new_value: _S) -> Generator[None, None, None]:
+        if self._bound_to is not None:
+            raise ValueError("Cannot set value of a Variable that is bound to a Value.")
+        if new_value != self._value:
+            old_value = self._value
+            self._value = new_value
+            yield None
+            self._on_change(new_value, old_value)
+        else:
+            yield None
+
     def _set_value_bypass_bound_check(self, new_value: _S) -> None:
         if new_value != self._value:
+            old_value = self._value
             self._value = new_value
-            self._on_change(new_value)
+            self._on_change(new_value, old_value)
 
-    def _receive_bound_value(self, value: _S) -> None:
-        self._set_value_bypass_bound_check(value)
-
-    def observe(self, observer: Observer | ValueObserver[_S], times: int | None = None) -> None:
-        self._on_change.observe(observer, times)
-
-    def weak_observe(self, observer: Observer | ValueObserver[_S], times: int | None = None) -> None:
-        self._on_change.weak_observe(observer, times)
-
-    def unobserve(self, observer: Observer | ValueObserver[_S]) -> None:
-        self._on_change.unobserve(observer)
+    @property
+    def observable(self) -> BiObservable[_S, _S]:
+        return self._on_change
 
     def bind_to(self, value: Value[_S], already_bound_ok: bool = False, bind_weakly: bool = True) -> None:
         if value is self:
             raise RecursionError("Cannot bind a Variable to itself.")
-        if value.is_dependent_on(self):
+        if value.is_derived_from(self):
             raise RecursionError("Circular binding detected.")
         if self._bound_to is not None:
             if not already_bound_ok:
@@ -223,12 +230,15 @@ class SimpleVariable(Variable[_S], Generic[_S]):
             if self._bound_to is value:
                 return
             self.unbind()
-        if bind_weakly:
-            value.weak_observe(self._receive_bound_value)
-        else:
-            value.observe(self._receive_bound_value)
+        try:
+            _ = value.constant_value_or_raise
+        except NotConstantError:
+            if bind_weakly:
+                value.weak_observe(self._set_value_bypass_bound_check)
+            else:
+                value.observe(self._set_value_bypass_bound_check)
+            self._bound_to_set = frozenset([value])
         self._bound_to = value
-        self._bound_to_set = frozenset([value])
         self._set_value_bypass_bound_check(value.value)
 
     def unbind(self, not_bound_ok: bool = False) -> None:
@@ -238,10 +248,11 @@ class SimpleVariable(Variable[_S], Generic[_S]):
             else:
                 return
 
-        self._bound_to.unobserve(self._receive_bound_value)
+        self._bound_to.unobserve(self._set_value_bypass_bound_check)
         self._bound_to = None
         self._bound_to_set = EMPTY_FROZEN_SET
 
+    @property
     def derived_from(self) -> frozenset[Value[_S]]:
         return self._bound_to_set
 
@@ -256,17 +267,20 @@ class Constant(Value[_S], Generic[_S]):
     def value(self) -> _S:
         return self._value
 
-    def observe(self, observer: Observer | ValueObserver[_S], times: int | None = None) -> None:
-        pass
+    @property
+    def observable(self) -> BiObservable[_S, _S]:
+        return void_bi_observable()
 
-    def weak_observe(self, observer: Observer | ValueObserver[_S], times: int | None = None) -> None:
-        pass
-
-    def unobserve(self, observer: Observer | ValueObserver[_S]) -> None:
-        pass
-
-    def derived_from(self) -> frozenset[Value[_S]]:
+    @property
+    def derived_from(self) -> frozenset[Derived]:
         return EMPTY_FROZEN_SET
+
+    @property
+    def deep_derived_from(self) -> Iterable[Derived]:
+        return EMPTY_FROZEN_SET
+
+    def is_derived_from(self, derived: Derived) -> bool:
+        return False
 
     @property
     def constant_value_or_raise(self) -> _S:
@@ -276,32 +290,37 @@ class Constant(Value[_S], Generic[_S]):
     def of(cls, value: _S) -> Constant[_S]:
         return Constant(value)
 
+    def __eq__(self, other):
+        if not isinstance(other, Constant):
+            return NotImplemented
+        return self._value == other._value
+
+    def __hash__(self):
+        return hash(self._value)
+
 
 class DerivedValueBase(Value[_S], Generic[_S], ABC):
     def __init__(self, *derived_from: Value):
         self._derived_from = frozenset(derived_from)
-        self._on_change: ValueEvent[_S] = ValueEvent()
+        self._on_change: BiEvent[_S, _S] = BiEvent[_S, _S]()
         for value in derived_from:
             value.weak_observe(self._on_dependency_changed)
         self._value = self._calculate_value()
 
-    def observe(self, observer: Observer | ValueObserver[_S], times: int | None = None) -> None:
-        self._on_change.observe(observer, times)
+    @property
+    def observable(self) -> BiObservable[_S, _S]:
+        return self._on_change
 
-    def weak_observe(self, observer: Observer | ValueObserver[_S], times: int | None = None) -> None:
-        self._on_change.weak_observe(observer, times)
-
-    def unobserve(self, observer: Observer | ValueObserver[_S]) -> None:
-        self._on_change.unobserve(observer)
-
+    @property
     def derived_from(self) -> frozenset[Value]:
         return self._derived_from
 
     def _on_dependency_changed(self) -> None:
         new_value = self._calculate_value()
         if new_value != self._value:
+            old_value = self._value
             self._value = new_value
-            self._on_change(self._value)
+            self._on_change(self._value, old_value)
 
     @abstractmethod
     def _calculate_value(self) -> _S: ...

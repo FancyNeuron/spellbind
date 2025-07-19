@@ -252,3 +252,6 @@ class NegateIntValue(OneToOneValue[int, int], IntValue):
         if isinstance(of, IntValue):
             return of
         return super().__neg__()
+
+
+ZERO = IntConstant.of(0)
