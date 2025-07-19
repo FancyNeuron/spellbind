@@ -4,6 +4,8 @@ from abc import ABC, abstractmethod
 from typing import TypeVar, Callable, Generic, Protocol, Iterable, Any, Sequence
 from weakref import WeakMethod, ref
 
+from typing_extensions import override
+
 from spellbind.functions import count_positional_parameters, assert_parameter_max_count, has_var_args
 
 _S_contra = TypeVar("_S_contra", contravariant=True)
@@ -109,9 +111,11 @@ class StrongSubscription(Subscription):
         super().__init__(observer, times, on_silent_change)
         self._observer = observer
 
+    @override
     def __call__(self, *args) -> None:
         self._call(self._observer, *args)
 
+    @override
     def matches_observer(self, observer: Callable) -> bool:
         return self._observer == observer
 
@@ -121,11 +125,13 @@ class StrongManyToOneSubscription(Subscription):
         super().__init__(observer, times, on_silent_change)
         self._observer = observer
 
+    @override
     def __call__(self, *args_args) -> None:
         for args in args_args:
             for v in args:
                 self._call(self._observer, v)
 
+    @override
     def matches_observer(self, observer: Callable) -> bool:
         return self._observer == observer
 
@@ -140,12 +146,14 @@ class WeakSubscription(Subscription):
         else:
             self._ref = ref(observer)
 
+    @override
     def __call__(self, *args) -> None:
         observer = self._ref()
         if observer is None:
             raise DeadReferenceError()
         self._call(observer, *args)
 
+    @override
     def matches_observer(self, observer: Callable) -> bool:
         return self._ref() == observer
 
@@ -160,6 +168,7 @@ class WeakManyToOneSubscription(Subscription):
         else:
             self._ref = ref(observer)
 
+    @override
     def __call__(self, *args_args) -> None:
         observer = self._ref()
         if observer is None:
@@ -168,6 +177,7 @@ class WeakManyToOneSubscription(Subscription):
             for v in args:
                 self._call(observer, v)
 
+    @override
     def matches_observer(self, observer: Callable) -> bool:
         return self._ref() == observer
 
@@ -191,12 +201,15 @@ class Observable(ABC):
 
 class ValueObservable(Observable, Generic[_S_co], ABC):
     @abstractmethod
+    @override
     def observe(self, observer: Observer | ValueObserver[_S_co], times: int | None = None) -> Subscription: ...
 
     @abstractmethod
+    @override
     def weak_observe(self, observer: Observer | ValueObserver[_S_co], times: int | None = None) -> Subscription: ...
 
     @abstractmethod
+    @override
     def unobserve(self, observer: Observer | ValueObserver[_S_co]) -> None: ...
 
     def map(self, transformer: Callable[[_S_co], _T], weakly: bool = False,
@@ -221,14 +234,17 @@ class ValueObservable(Observable, Generic[_S_co], ABC):
 
 class BiObservable(Observable, Generic[_S_co, _T_co], ABC):
     @abstractmethod
+    @override
     def observe(self, observer: Observer | ValueObserver[_S_co] | BiObserver[_S_co, _T_co],
                 times: int | None = None) -> Subscription: ...
 
     @abstractmethod
+    @override
     def weak_observe(self, observer: Observer | ValueObserver[_S_co] | BiObserver[_S_co, _T_co],
                      times: int | None = None) -> Subscription: ...
 
     @abstractmethod
+    @override
     def unobserve(self, observer: Observer | ValueObserver[_S_co] | BiObserver[_S_co, _T_co]) -> None: ...
 
     def map_to_one(self, transformer: Callable[[_S_co, _T_co], _U], weakly: bool = False,
@@ -249,14 +265,17 @@ class BiObservable(Observable, Generic[_S_co, _T_co], ABC):
 
 class TriObservable(BiObservable[_S_co, _T_co], Generic[_S_co, _T_co, _U_co], ABC):
     @abstractmethod
+    @override
     def observe(self, observer: Observer | ValueObserver[_S_co] | BiObserver[_S_co, _T_co] | TriObserver[_S_co, _T_co, _U_co],
                 times: int | None = None) -> Subscription: ...
 
     @abstractmethod
+    @override
     def weak_observe(self, observer: Observer | ValueObserver[_S_co] | BiObserver[_S_co, _T_co] | TriObserver[_S_co, _T_co, _U_co],
                      times: int | None = None) -> Subscription: ...
 
     @abstractmethod
+    @override
     def unobserve(self, observer: Observer | ValueObserver[_S_co] | BiObserver[_S_co, _T_co] | TriObserver[_S_co, _T_co, _U_co]) -> None: ...
 
     def or_tri(self, other: TriObservable[_S_co, _T_co, _U_co]) -> TriObservable[_S_co, _T_co, _U_co]:
@@ -265,9 +284,11 @@ class TriObservable(BiObservable[_S_co, _T_co], Generic[_S_co, _T_co, _U_co], AB
 
 class ValuesObservable(Observable, Generic[_S_co], ABC):
     @abstractmethod
+    @override
     def observe(self, observer: Observer | ValuesObserver[_S_co], times: int | None = None) -> Subscription: ...
 
     @abstractmethod
+    @override
     def weak_observe(self, observer: Observer | ValuesObserver[_S_co], times: int | None = None) -> Subscription: ...
 
     @abstractmethod
@@ -277,6 +298,7 @@ class ValuesObservable(Observable, Generic[_S_co], ABC):
     def weak_observe_single(self, observer: ValueObserver[_S_co], times: int | None = None) -> Subscription: ...
 
     @abstractmethod
+    @override
     def unobserve(self, observer: Observer | ValuesObserver[_S_co]) -> None: ...
 
     def map_to_one(self, transformer: Callable[[Iterable[_S_co]], _T_co], weakly: bool = False,
@@ -397,6 +419,7 @@ class _SingleBaseObservable(_BaseObservable[_O], Generic[_O], ABC):
         value = func()
         self._emit_single(value)
 
+    @override
     def _get_parameter_count(self) -> int:
         return 1
 
@@ -412,15 +435,18 @@ class _DerivedObservableBase(_BaseObservable[_O], Generic[_O], ABC):
         self._predicate = predicate
         self._weakly = weakly
 
+    @override
     def _append_subscription(self, subscription: Subscription):
         super()._append_subscription(subscription)
         self._set_subscriptions_silent(False)
 
+    @override
     def _del_subscription(self, index: int):
         super()._del_subscription(index)
         if not self.is_observed():
             self._set_subscriptions_silent(True)
 
+    @override
     def _on_subscription_silent_change(self, silent: bool) -> None:
         super()._on_subscription_silent_change(silent)
         if silent:
@@ -448,6 +474,7 @@ class _DerivedFromOneObservableBase(_DerivedObservableBase[_O], Generic[_O], ABC
             self._derived_from_subscription = derived_from.observe(self._on_derived_emit)
         self._set_subscriptions_silent(True)
 
+    @override
     def _set_subscriptions_silent(self, silent: bool):
         self._derived_from_subscription.silent = silent
 
@@ -462,6 +489,7 @@ class _DerivedFromManyObservableBase(_DerivedObservableBase[_O], Generic[_O], AB
             self._derived_from_subscriptions = tuple(d.observe(self._on_derived_emit) for d in derived_from)
         self._set_subscriptions_silent(True)
 
+    @override
     def _set_subscriptions_silent(self, silent: bool):
         for sub in self._derived_from_subscriptions:
             sub.silent = silent
@@ -485,6 +513,7 @@ class CombinedObservable(_DerivedFromManyObservableBase[Observer], Observable):
     def __init__(self, derived_from: Iterable[Observable], weakly: bool = False):
         super().__init__(derived_from=derived_from, weakly=weakly, transformer=None, predicate=None)
 
+    @override
     def _get_parameter_count(self) -> int:
         return 0
 
@@ -495,6 +524,7 @@ class CombinedValueObservable(_DerivedFromManyObservableBase[Observer | ValueObs
     def __init__(self, derived_from: Iterable[ValueObservable[_S]], weakly: bool = False):
         super().__init__(derived_from=derived_from, weakly=weakly, transformer=None, predicate=None)
 
+    @override
     def _get_parameter_count(self) -> int:
         return 1
 
@@ -505,6 +535,7 @@ class CombinedBiObservable(_DerivedFromManyObservableBase[Observer | ValueObserv
     def __init__(self, derived_from: Iterable[BiObservable[_S, _T]], weakly: bool = False):
         super().__init__(derived_from=derived_from, weakly=weakly, transformer=None, predicate=None)
 
+    @override
     def _get_parameter_count(self) -> int:
         return 2
 
@@ -515,6 +546,7 @@ class CombinedTriObservable(_DerivedFromManyObservableBase[Observer | ValueObser
     def __init__(self, derived_from: Iterable[TriObservable[_S, _T, _U]], weakly: bool = False):
         super().__init__(derived_from=derived_from, weakly=weakly, transformer=None, predicate=None)
 
+    @override
     def _get_parameter_count(self) -> int:
         return 3
 
@@ -526,6 +558,7 @@ class CombinedValuesObservable(_DerivedFromManyObservableBase[Observer | ValuesO
     def __init__(self, derived_from: Iterable[ValuesObservable[_S]], weakly: bool = False):
         super().__init__(derived_from=derived_from, weakly=weakly, transformer=None, predicate=None)
 
+    @override
     def _get_parameter_count(self) -> int:
         return 1
 
@@ -541,6 +574,7 @@ class MergedValuesObservable(_DerivedFromOneObservableBase[Observer | ValueObser
                  predicate: Callable[[Iterable[_T]], bool] | None = None):
         super().__init__(derived_from, transformer, weakly, predicate)
 
+    @override
     def _on_derived_emit(self, values: Iterable[_T]) -> None:
         if self._predicate is None or self._predicate(values):
             self._emit_single_lazy(lambda: self._transformer(values))
@@ -557,10 +591,12 @@ class MergeManyToTwoObservable(_DerivedFromOneObservableBase[Observer | ValueObs
                  predicate: Callable[[Iterable[_U]], bool] | None = None):
         super().__init__(derived_from, transformer, weakly, predicate)
 
+    @override
     def _on_derived_emit(self, values: Iterable[_U]) -> None:
         if self._predicate is None or self._predicate(values):
             self._emit_n_lazy(lambda: self._transformer(values))
 
+    @override
     def _get_parameter_count(self) -> int:
         return 2
 
@@ -575,10 +611,12 @@ class MergeManyToThreeObservable(_DerivedFromOneObservableBase[Observer | ValueO
                  predicate: Callable[[Iterable[_V]], bool] | None = None):
         super().__init__(derived_from, transformer, weakly, predicate)
 
+    @override
     def _on_derived_emit(self, values: Iterable[_V]) -> None:
         if self._predicate is None or self._predicate(values):
             self._emit_n_lazy(lambda: self._transformer(values))
 
+    @override
     def _get_parameter_count(self) -> int:
         return 3
 
@@ -594,6 +632,7 @@ class MappedValuesObservable(_DerivedFromOneObservableBase[Observer | ValuesObse
                  predicate: Callable[[_T], bool] | None = None):
         super().__init__(derived_from, transformer, weakly, predicate)
 
+    @override
     def _on_derived_emit(self, values) -> None:
         predicate = self._predicate
         if predicate is None:
@@ -613,9 +652,11 @@ class MappedValueObservable(_DerivedFromOneObservableBase[Observer | ValueObserv
                  predicate: Callable[[_T], bool] | None = None):
         super().__init__(derived_from, transformer, weakly, predicate)
 
+    @override
     def _get_parameter_count(self) -> int:
         return 1
 
+    @override
     def _on_derived_emit(self, value) -> None:
         if self._predicate is None or self._predicate(value):
             self._emit_single_lazy(lambda: self._transformer(value))
@@ -631,6 +672,7 @@ class SplitOneInTwoObservable(_DerivedFromOneObservableBase[Observer | ValueObse
                  predicate: Callable[[_U], bool] | None = None):
         super().__init__(derived_from, transformer, weakly, predicate)
 
+    @override
     def _get_parameter_count(self) -> int:
         return 2
 
@@ -645,6 +687,7 @@ class SplitOneInThreeObservable(_DerivedFromOneObservableBase[Observer | ValueOb
                  predicate: Callable[[_V], bool] | None = None):
         super().__init__(derived_from, transformer, weakly, predicate)
 
+    @override
     def _get_parameter_count(self) -> int:
         return 3
 
@@ -660,6 +703,7 @@ class SplitOneInManyObservable(_DerivedFromOneObservableBase[Observer | ValuesOb
                  predicate: Callable[[_T], bool] | None = None):
         super().__init__(derived_from, transformer, weakly, predicate)
 
+    @override
     def _on_derived_emit(self, value) -> None:
         predicate = self._predicate
         if predicate is None or predicate(value):
@@ -677,6 +721,7 @@ class MergeTwoToOneObservable(_DerivedFromOneObservableBase[Observer | ValueObse
                  predicate: Callable[[_T, _U], bool] | None = None):
         super().__init__(derived_from, transformer, weakly, predicate)
 
+    @override
     def _on_derived_emit(self, value_0: _T, value_1: _U) -> None:
         if self._predicate is None or self._predicate(value_0, value_1):
             self._emit_single_lazy(lambda: self._transformer(value_0, value_1))
@@ -692,6 +737,7 @@ class MappedBiObservable(_DerivedFromOneObservableBase[Observer | ValueObserver[
                  predicate: Callable[[_U, _V], bool] | None = None):
         super().__init__(derived_from, transformer, weakly, predicate)
 
+    @override
     def _get_parameter_count(self) -> int:
         return 2
 
@@ -706,6 +752,7 @@ class SplitTwoToThreeObservable(_DerivedFromOneObservableBase[Observer | ValueOb
                  predicate: Callable[[_V, _W], bool] | None = None):
         super().__init__(derived_from, transformer, weakly, predicate)
 
+    @override
     def _get_parameter_count(self) -> int:
         return 3
 
@@ -714,9 +761,11 @@ class _VoidSubscription(Subscription):
     def __init__(self):
         super().__init__(lambda: None, None, lambda silent: None)
 
+    @override
     def __call__(self, *args) -> None:
         pass  # pragma: no cover
 
+    @override
     def matches_observer(self, observer: Callable) -> bool:
         return False  # pragma: no cover
 
@@ -725,81 +774,103 @@ VOID_SUBSCRIPTION = _VoidSubscription()
 
 
 class _VoidObservable(Observable):
+    @override
     def observe(self, observer: Observer, times: int | None = None) -> Subscription:
         return VOID_SUBSCRIPTION  # pragma: no cover
 
+    @override
     def weak_observe(self, observer: Observer, times: int | None = None) -> Subscription:
         return VOID_SUBSCRIPTION  # pragma: no cover
 
+    @override
     def unobserve(self, observer: Observer) -> None:
         pass  # pragma: no cover
 
+    @override
     def is_observed(self, by: Observer | None = None) -> bool:
         return False  # pragma: no cover
 
 
 class _VoidValueObservable(ValueObservable[_S], Generic[_S]):
+    @override
     def observe(self, observer: Observer | ValueObserver[_S], times: int | None = None) -> Subscription:
         return VOID_SUBSCRIPTION  # pragma: no cover
 
+    @override
     def weak_observe(self, observer: Observer | ValueObserver[_S], times: int | None = None) -> Subscription:
         return VOID_SUBSCRIPTION  # pragma: no cover
 
+    @override
     def unobserve(self, observer: Observer | ValueObserver[_S]) -> None:
         pass  # pragma: no cover
 
+    @override
     def is_observed(self, by: Observer | ValueObserver[_S] | None = None) -> bool:
         return False  # pragma: no cover
 
 
 class _VoidBiObservable(BiObservable[_S, _T], Generic[_S, _T]):
+    @override
     def observe(self, observer: Observer | ValueObserver[_S] | BiObserver[_S, _T],
                 times: int | None = None) -> Subscription:
         return VOID_SUBSCRIPTION  # pragma: no cover
 
+    @override
     def weak_observe(self, observer: Observer | ValueObserver[_S] | BiObserver[_S, _T],
                      times: int | None = None) -> Subscription:
         return VOID_SUBSCRIPTION  # pragma: no cover
 
+    @override
     def unobserve(self, observer: Observer | ValueObserver[_S] | BiObserver[_S, _T]) -> None:
         pass  # pragma: no cover
 
+    @override
     def is_observed(self, by: Observer | ValueObserver[_S] | BiObserver[_S, _T] | None = None) -> bool:
         return False  # pragma: no cover
 
 
 class _VoidTriObservable(TriObservable[_S, _T, _U], Generic[_S, _T, _U]):
+    @override
     def observe(self, observer: Observer | ValueObserver[_S] | BiObserver[_S, _T] | TriObserver[_S, _T, _U],
                 times: int | None = None) -> Subscription:
         return VOID_SUBSCRIPTION  # pragma: no cover
 
+    @override
     def weak_observe(self, observer: Observer | ValueObserver[_S] | BiObserver[_S, _T] | TriObserver[_S, _T, _U],
                      times: int | None = None) -> Subscription:
         return VOID_SUBSCRIPTION  # pragma: no cover
 
+    @override
     def unobserve(self, observer: Observer | ValueObserver[_S] | BiObserver[_S, _T] | TriObserver[_S, _T, _U]) -> None:
         pass  # pragma: no cover
 
+    @override
     def is_observed(self, by: Observer | ValueObserver[_S] | BiObserver[_S, _T] | TriObserver[_S, _T, _U] | None = None) -> bool:
         return False  # pragma: no cover
 
 
 class _VoidValuesObservable(ValuesObservable[_S], Generic[_S]):
+    @override
     def observe(self, observer: Observer | ValuesObserver[_S], times: int | None = None) -> Subscription:
         return VOID_SUBSCRIPTION  # pragma: no cover
 
+    @override
     def weak_observe(self, observer: Observer | ValuesObserver[_S], times: int | None = None) -> Subscription:
         return VOID_SUBSCRIPTION  # pragma: no cover
 
+    @override
     def observe_single(self, observer: ValueObserver[_S], times: int | None = None) -> Subscription:
         return VOID_SUBSCRIPTION  # pragma: no cover
 
+    @override
     def weak_observe_single(self, observer: ValueObserver[_S], times: int | None = None) -> Subscription:
         return VOID_SUBSCRIPTION  # pragma: no cover
 
+    @override
     def unobserve(self, observer: Observer | ValuesObserver[_S]) -> None:
         pass  # pragma: no cover
 
+    @override
     def is_observed(self, by: Observer | ValuesObserver[_S] | None = None) -> bool:
         return False  # pragma: no cover
 

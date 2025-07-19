@@ -4,7 +4,7 @@ import operator
 from abc import ABC
 from typing import overload, Generic, Callable, Iterable
 
-from typing_extensions import Self, TypeVar
+from typing_extensions import Self, TypeVar, override
 
 from spellbind.bool_values import BoolValue
 from spellbind.float_values import FloatValue, \
@@ -197,6 +197,7 @@ class TwoToIntValue(Generic[_S, _T], TwoToOneValue[_S, _T, int], IntValue):
 
 class ThreeToIntValue(Generic[_S, _T, _U], ThreeToOneValue[_S, _T, _U, int], IntValue):
     @staticmethod
+    @override
     def create(transformer: Callable[[_S, _T, _U], int], first: _S | Value[_S], second: _T | Value[_T], third: _U | Value[_U]) -> IntValue:
         return ThreeToIntValue(transformer, first, second, third)
 
@@ -205,17 +206,20 @@ class IntConstant(IntValue, Constant[int]):
     _cache: dict[int, IntConstant] = {}
 
     @classmethod
+    @override
     def of(cls, value: int) -> IntConstant:
         try:
             return cls._cache[value]
         except KeyError:
             return IntConstant(value)
 
+    @override
     def __abs__(self):
         if self.value >= 0:
             return self
         return IntConstant.of(-self.value)
 
+    @override
     def __neg__(self):
         return IntConstant.of(-self.value)
 
@@ -239,6 +243,7 @@ class AbsIntValue(OneToOneValue[int, int], IntValue):
     def __init__(self, value: Value[int]):
         super().__init__(abs, value)
 
+    @override
     def __abs__(self) -> Self:
         return self
 
@@ -247,6 +252,7 @@ class NegateIntValue(OneToOneValue[int, int], IntValue):
     def __init__(self, value: Value[int]):
         super().__init__(operator.neg, value)
 
+    @override
     def __neg__(self) -> IntValue:
         of = self._of
         if isinstance(of, IntValue):

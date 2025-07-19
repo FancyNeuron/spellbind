@@ -4,6 +4,8 @@ import operator
 from abc import ABC
 from typing import TypeVar, Generic, overload, TYPE_CHECKING, TypeAlias, Callable, Iterable
 
+from typing_extensions import override
+
 from spellbind.values import Value, OneToOneValue, Constant, SimpleVariable, TwoToOneValue, \
     ManyToSameValue, ThreeToOneValue
 
@@ -137,12 +139,14 @@ class ManyBoolToBoolValue(ManyToSameValue[bool], BoolValue):
 
 class BoolConstant(BoolValue, Constant[bool]):
     @classmethod
+    @override
     def of(cls, value: bool) -> BoolConstant:
         if value:
             return TRUE
         return FALSE
 
     @property
+    @override
     def logical_not(self) -> BoolConstant:
         return BoolConstant.of(not self.value)
 
@@ -153,6 +157,7 @@ class BoolVariable(SimpleVariable[bool], BoolValue):
 
 class ThreeToBoolValue(ThreeToOneValue[_S, _T, _U, bool], BoolValue):
     @staticmethod
+    @override
     def create(transformer: Callable[[_S, _T, _U], bool],
                first: _S | Value[_S], second: _T | Value[_T], third: _U | Value[_U]) -> BoolValue:
         return ThreeToBoolValue(transformer, first, second, third)

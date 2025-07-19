@@ -46,6 +46,8 @@ testing = [
     "typing_extensions"
 ]
 
+[tool.mypy]
+enable_error_code = "explicit-override"
 
 [tool.setuptools.packages.find]
 where = ["src"]

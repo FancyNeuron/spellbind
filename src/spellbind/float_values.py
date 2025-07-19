@@ -5,7 +5,7 @@ import operator
 from abc import ABC
 from typing import Generic, Callable, Sequence, TypeVar, overload
 
-from typing_extensions import Self
+from typing_extensions import Self, override
 from typing_extensions import TYPE_CHECKING
 
 from spellbind.bool_values import BoolValue
@@ -206,17 +206,20 @@ class FloatConstant(FloatValue, Constant[float]):
     _cache: dict[float, FloatConstant] = {}
 
     @classmethod
+    @override
     def of(cls, value: float) -> FloatConstant:
         try:
             return FloatConstant._cache[value]
         except KeyError:
             return FloatConstant(value)
 
+    @override
     def __abs__(self):
         if self.value >= 0:
             return self
         return FloatConstant.of(-self.value)
 
+    @override
     def __neg__(self):
         return FloatConstant.of(-self.value)
 
@@ -245,9 +248,11 @@ class OneFloatToOneValue(DerivedValueBase[_S], Generic[_S]):
         super().__init__(*[v for v in (of,) if isinstance(v, Value)])
 
     @property
+    @override
     def value(self) -> _S:
         return self._value
 
+    @override
     def _calculate_value(self) -> _S:
         return self._transformer(self._getter())
 
@@ -277,12 +282,14 @@ class ManyFloatsToOneValue(DerivedValueBase[_S], Generic[_S]):
         self._transformer = transformer
         super().__init__(*[v for v in self._input_values if isinstance(v, Value)])
 
+    @override
     def _calculate_value(self) -> _S:
         gotten_values = [getter() for getter in self._value_getters]
         return self._transformer(gotten_values)
 
 
 class ManyFloatsToFloatValue(ManyFloatsToOneValue[float], FloatValue):
+    @override
     def decompose_float_operands(self, operator_: Callable) -> Sequence[FloatLike]:
         if self._transformer == operator_:
             return self._input_values
@@ -299,11 +306,13 @@ class TwoFloatsToOneValue(DerivedValueBase[_S], Generic[_S]):
         self._second_getter = _create_float_getter(second)
         super().__init__(*[v for v in (first, second) if isinstance(v, Value)])
 
+    @override
     def _calculate_value(self) -> _S:
         return self._transformer(self._first_getter(), self._second_getter())
 
 
 class TwoFloatsToFloatsValue(TwoFloatsToOneValue[float], FloatValue):
+    @override
     def decompose_float_operands(self, operator_: Callable) -> Sequence[FloatLike]:
         if self._transformer == operator_:
             return self._of_first, self._of_second
@@ -322,11 +331,13 @@ class ThreeFloatToOneValue(DerivedValueBase[_S], Generic[_S]):
         self._third_getter = _create_float_getter(third)
         super().__init__(*[v for v in (first, second, third) if isinstance(v, Value)])
 
+    @override
     def _calculate_value(self) -> _S:
         return self._transformer(self._first_getter(), self._second_getter(), self._third_getter())
 
 
 class ThreeFloatToFloatValue(ThreeFloatToOneValue[float], FloatValue):
+    @override
     def decompose_float_operands(self, operator_: Callable) -> Sequence[FloatLike]:
         if self._transformer == operator_:
             return self._of_first, self._of_second, self._of_third
@@ -335,6 +346,7 @@ class ThreeFloatToFloatValue(ThreeFloatToOneValue[float], FloatValue):
 
 class ThreeToFloatValue(ThreeToOneValue[_S, _T, _U, float], FloatValue):
     @classmethod
+    @override
     def create(cls, transformer: Callable[[_S, _T, _U], float],
                first: _S | Value[_S], second: _T | Value[_T], third: _U | Value[_U]) -> FloatValue:
         return ThreeToFloatValue(transformer, first, second, third)
@@ -344,6 +356,7 @@ class AbsFloatValue(OneFloatToOneValue[float], FloatValue):
     def __init__(self, value: FloatLike):
         super().__init__(abs, value)
 
+    @override
     def __abs__(self) -> Self:
         return self
 
@@ -352,6 +365,7 @@ class NegateFloatValue(OneFloatToFloatValue, FloatValue):
     def __init__(self, value: FloatLike):
         super().__init__(operator.neg, value)
 
+    @override
     def __neg__(self) -> FloatValue:
         of = self._of
         if isinstance(of, FloatValue):

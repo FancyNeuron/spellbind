@@ -4,6 +4,8 @@ import functools
 from abc import ABC, abstractmethod
 from typing import TypeVar, Generic, Collection, Callable, Iterable, Iterator
 
+from typing_extensions import override
+
 from spellbind.actions import CollectionAction, DeltaAction, DeltasAction, ClearAction
 from spellbind.event import BiEvent
 from spellbind.int_values import IntValue
@@ -29,6 +31,7 @@ class ObservableCollection(Collection[_S_co], Generic[_S_co], ABC):
     @abstractmethod
     def length_value(self) -> IntValue: ...
 
+    @override
     def __len__(self) -> int:
         return self.length_value.value
 
@@ -115,19 +118,23 @@ class ReducedValue(Value[_S], Generic[_S]):
             self._on_change(value, old_value)
 
     @property
+    @override
     def value(self) -> _S:
         return self._value
 
     @property
+    @override
     def observable(self) -> BiObservable[_S, _S]:
         return self._on_change
 
     @property
+    @override
     def derived_from(self) -> frozenset[Value]:
         return EMPTY_FROZEN_SET
 
 
 class ValueCollection(ObservableCollection[Value[_S]], Generic[_S], ABC):
+    @override
     def reduce_to_int(self,
                       add_reducer: Callable[[int, Value[_S]], int],
                       remove_reducer: Callable[[int, Value[_S]], int],
@@ -156,6 +163,7 @@ class CombinedValue(Value[_S], Generic[_S]):
         self._on_change: BiEvent[_S, _S] = BiEvent[_S, _S]()
 
     @property
+    @override
     def observable(self) -> BiObservable[_S, _S]:
         return self._on_change
 
@@ -166,9 +174,11 @@ class CombinedValue(Value[_S], Generic[_S]):
             self._on_change(self._value, old_value)
 
     @property
+    @override
     def value(self) -> _S:
         return self._value
 
     @property
+    @override
     def derived_from(self) -> frozenset[Value]:
         return EMPTY_FROZEN_SET

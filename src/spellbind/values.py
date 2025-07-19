@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing_extensions import deprecated
+from typing_extensions import deprecated, override
 
 from abc import ABC, abstractmethod
 from contextlib import contextmanager
@@ -91,9 +91,11 @@ class Value(Generic[_S], Derived, ABC):
     def decompose_operands(self, operator_: Callable) -> Sequence[Value[_S] | _S]:
         return (self,)
 
+    @override
     def __str__(self) -> str:
         return str(self.value)
 
+    @override
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}({self.value!r})"
 
@@ -160,8 +162,10 @@ class Value(Generic[_S], Derived, ABC):
 
 
 class Variable(Value[_S], Generic[_S], ABC):
-    @property
+    # mypy 1.17.0 complains that @override is missing, which it is clearly not, so we ignore that error
+    @property  # type: ignore[explicit-override]
     @abstractmethod
+    @override
     def value(self) -> _S: ...
 
     @value.setter
@@ -193,17 +197,21 @@ class SimpleVariable(Variable[_S], Generic[_S]):
         self._on_change = BiEvent[_S, _S]()
         self._bound_to = None
 
-    @property
+    # mypy 1.17.0 complains that @override is missing, which it is clearly not, so we ignore that error
+    @property  # type: ignore[explicit-override]
+    @override
     def value(self) -> _S:
         return self._value
 
     @value.setter
+    @override
     def value(self, new_value: _S) -> None:
         if self._bound_to is not None:
             raise ValueError("Cannot set value of a Variable that is bound to a Value.")
         self._set_value_bypass_bound_check(new_value)
 
     @contextmanager
+    @override
     def set_delay_notify(self, new_value: _S) -> Generator[None, None, None]:
         if self._bound_to is not None:
             raise ValueError("Cannot set value of a Variable that is bound to a Value.")
@@ -222,9 +230,11 @@ class SimpleVariable(Variable[_S], Generic[_S]):
             self._on_change(new_value, old_value)
 
     @property
+    @override
     def observable(self) -> BiObservable[_S, _S]:
         return self._on_change
 
+    @override
     def bind(self, value: Value[_S], already_bound_ok: bool = False, bind_weakly: bool = True) -> None:
         if value is self:
             raise RecursionError("Cannot bind a Variable to itself.")
@@ -247,6 +257,7 @@ class SimpleVariable(Variable[_S], Generic[_S]):
         self._bound_to = value
         self._set_value_bypass_bound_check(value.value)
 
+    @override
     def unbind(self, not_bound_ok: bool = False) -> None:
         if self._bound_to is None:
             if not not_bound_ok:
@@ -259,6 +270,7 @@ class SimpleVariable(Variable[_S], Generic[_S]):
         self._bound_to_set = EMPTY_FROZEN_SET
 
     @property
+    @override
     def derived_from(self) -> frozenset[Value[_S]]:
         return self._bound_to_set
 
@@ -270,25 +282,31 @@ class Constant(Value[_S], Generic[_S]):
         self._value = value
 
     @property
+    @override
     def value(self) -> _S:
         return self._value
 
     @property
+    @override
     def observable(self) -> BiObservable[_S, _S]:
         return void_bi_observable()
 
     @property
+    @override
     def derived_from(self) -> frozenset[Derived]:
         return EMPTY_FROZEN_SET
 
     @property
+    @override
     def deep_derived_from(self) -> Iterable[Derived]:
         return EMPTY_FROZEN_SET
 
+    @override
     def is_derived_from(self, derived: Derived) -> bool:
         return False
 
     @property
+    @override
     def constant_value_or_raise(self) -> _S:
         return self._value
 
@@ -296,11 +314,13 @@ class Constant(Value[_S], Generic[_S]):
     def of(cls, value: _S) -> Constant[_S]:
         return Constant(value)
 
+    @override
     def __eq__(self, other):
         if not isinstance(other, Constant):
             return NotImplemented
         return self._value == other._value
 
+    @override
     def __hash__(self):
         return hash(self._value)
 
@@ -314,10 +334,12 @@ class DerivedValueBase(Value[_S], Generic[_S], ABC):
         self._value = self._calculate_value()
 
     @property
+    @override
     def observable(self) -> BiObservable[_S, _S]:
         return self._on_change
 
     @property
+    @override
     def derived_from(self) -> frozenset[Value]:
         return self._derived_from
 
@@ -332,6 +354,7 @@ class DerivedValueBase(Value[_S], Generic[_S], ABC):
     def _calculate_value(self) -> _S: ...
 
     @property
+    @override
     def value(self) -> _S:
         return self._value
 
@@ -345,6 +368,7 @@ class OneToOneValue(DerivedValueBase[_T], Generic[_S, _T]):
         self._transformer = transformer
         super().__init__(*[v for v in (of,) if isinstance(v, Value)])
 
+    @override
     def _calculate_value(self) -> _T:
         return self._transformer(self._getter())
 
@@ -356,12 +380,14 @@ class ManyToOneValue(DerivedValueBase[_T], Generic[_S, _T]):
         self._transformer = transformer
         super().__init__(*[v for v in self._input_values if isinstance(v, Value)])
 
+    @override
     def _calculate_value(self) -> _T:
         gotten_values = [getter() for getter in self._value_getters]
         return self._transformer(gotten_values)
 
 
 class ManyToSameValue(ManyToOneValue[_S, _S], Generic[_S]):
+    @override
     def decompose_operands(self, transformer: Callable) -> Sequence[Value[_S] | _S]:
         if transformer == self._transformer:
             return self._input_values
@@ -378,6 +404,7 @@ class TwoToOneValue(DerivedValueBase[_U], Generic[_S, _T, _U]):
         self._second_getter = _create_value_getter(second)
         super().__init__(*[v for v in (first, second) if isinstance(v, Value)])
 
+    @override
     def _calculate_value(self) -> _U:
         return self._transformer(self._first_getter(), self._second_getter())
 
@@ -394,6 +421,7 @@ class ThreeToOneValue(DerivedValueBase[_V], Generic[_S, _T, _U, _V]):
         self._third_getter = _create_value_getter(third)
         super().__init__(*[v for v in (first, second, third) if isinstance(v, Value)])
 
+    @override
     def _calculate_value(self) -> _V:
         return self._transformer(self._first_getter(), self._second_getter(), self._third_getter())
 
