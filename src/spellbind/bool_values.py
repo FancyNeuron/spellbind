@@ -60,8 +60,20 @@ class BoolValue(Value[bool], ABC):
     def __rxor__(self, other: bool) -> BoolValue:
         return BoolValue.derive_from_two(operator.xor, other, self)
 
-    @overload
-    def select(self, if_true: IntValueLike, if_false: IntValueLike) -> IntValue: ...
+    def select_int(self, if_true: IntLike, if_false: IntLike) -> IntValue:
+        from spellbind.int_values import IntValue
+        return IntValue.derive_from_three(_select_function, self, if_true, if_false)
+
+    def select_float(self, if_true: FloatLike, if_false: FloatLike) -> FloatValue:
+        from spellbind.float_values import FloatValue
+        return FloatValue.derive_from_three(_select_function, self, if_true, if_false)
+
+    def select_bool(self, if_true: BoolLike, if_false: BoolLike) -> BoolValue:
+        return BoolValue.derive_from_three(_select_function, self, if_true, if_false)
+
+    def select_str(self, if_true: StrLike, if_false: StrLike) -> StrValue:
+        from spellbind.str_values import StrValue
+        return StrValue.derive_from_three(_select_function, self, if_true, if_false)
 
     @overload
     def select(self, if_true: FloatValueLike, if_false: FloatValueLike) -> FloatValue: ...
@@ -75,19 +87,21 @@ class BoolValue(Value[bool], ABC):
     @overload
     def select(self, if_true: Value[_S] | _S, if_false: Value[_S] | _S) -> Value[_S]: ...
 
-    def select(self, if_true, if_false):
+    def select(self, if_true: Value[_S] | _S, if_false: Value[_S] | _S) -> Value[_S]:
+        from spellbind.str_values import StrValue
         from spellbind.float_values import FloatValue
         from spellbind.int_values import IntValue
-        from spellbind.str_values import StrValue
 
+        # suppressing errors, because it seems mypy does not understand the connection between
+        # parameter type and return type as it could be inferred from the overloads
         if isinstance(if_true, (FloatValue, float)) and isinstance(if_false, (FloatValue, float)):
-            return FloatValue.derive_from_three(_select_function, self, if_true, if_false)
+            return self.select_float(if_true, if_false)  # type: ignore[return-value]
         elif isinstance(if_true, (StrValue, str)) and isinstance(if_false, (StrValue, str)):
-            return StrValue.derive_from_three(_select_function, self, if_true, if_false)
+            return self.select_str(if_true, if_false)  # type: ignore[return-value]
         elif isinstance(if_true, (BoolValue, bool)) and isinstance(if_false, (BoolValue, bool)):
-            return BoolValue.derive_from_three(_select_function, self, if_true, if_false)
+            return self.select_bool(if_true, if_false)  # type: ignore[return-value]
         elif isinstance(if_true, (IntValue, int)) and isinstance(if_false, (IntValue, int)):
-            return IntValue.derive_from_three(_select_function, self, if_true, if_false)
+            return self.select_int(if_true, if_false)  # type: ignore[return-value]
         else:
             return Value.derive_three_value(_select_function, self, if_true, if_false)
 
@@ -127,7 +141,7 @@ class OneToBoolValue(OneToOneValue[_S, bool], BoolValue, Generic[_S]):
 
 
 class NotBoolValue(OneToOneValue[bool, bool], BoolValue):
-    def __init__(self, value: Value[bool]):
+    def __init__(self, value: Value[bool]) -> None:
         super().__init__(operator.not_, value)
 
 

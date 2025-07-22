@@ -27,7 +27,7 @@ class ObservableStrList(ObservableList[str], ObservableStrCollection):
 
 
 class CombinedStrValue(CombinedValue[str], StrValue):
-    def __init__(self, collection: ObservableCollection[_S], combiner: Callable[[Iterable[_S]], str]):
+    def __init__(self, collection: ObservableCollection[_S], combiner: Callable[[Iterable[_S]], str]) -> None:
         super().__init__(collection=collection, combiner=combiner)
 
 

@@ -31,7 +31,7 @@ jobs:
         flake8 . --count --max-complexity=10 --max-line-length=180 --show-source --statistics
     - name: Type check with mypy
       run: |
-        mypy src
+        mypy src --strict
     - name: Test with pytest
       run: |
         pytest --cov --cov-fail-under=95
