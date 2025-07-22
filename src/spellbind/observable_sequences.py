@@ -37,7 +37,7 @@ class ObservableSequence(Sequence[_S_co], ObservableCollection[_S_co], Generic[_
     def map(self, transformer: Callable[[_S_co], _T]) -> ObservableSequence[_T]: ...
 
     @override
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         if not isinstance(other, Sequence):
             return NotImplemented
         if len(self) != len(other):
@@ -78,12 +78,12 @@ class ValueSequence(IndexObservableSequence[Value[_S]], ValueCollection[_S], Gen
         return [value.value for value in self]
 
     @override
-    def __str__(self):
+    def __str__(self) -> str:
         return "[" + ", ".join(str(value) for value in self) + "]"
 
 
 class UnboxedValueSequence(ObservableSequence[_S_co], Generic[_S_co]):
-    def __init__(self, value_sequence: ValueSequence[_S_co]):
+    def __init__(self, value_sequence: ValueSequence[_S_co]) -> None:
         self._value_sequence = value_sequence
         self._on_change = value_sequence.on_value_change
         self._delta_observable = value_sequence.value_delta_observable
@@ -97,13 +97,13 @@ class UnboxedValueSequence(ObservableSequence[_S_co], Generic[_S_co]):
     def __getitem__(self, index: slice) -> Sequence[_S_co]: ...
 
     @override
-    def __getitem__(self, index):
+    def __getitem__(self, index: int | slice) -> _S_co | Sequence[_S_co]:
         if isinstance(index, slice):
             return [value.value for value in self._value_sequence[index]]
         return self._value_sequence[index].value
 
     @override
-    def __iter__(self):
+    def __iter__(self) -> Iterator[_S_co]:
         return self._value_sequence.value_iter()
 
     @property
@@ -126,11 +126,11 @@ class UnboxedValueSequence(ObservableSequence[_S_co], Generic[_S_co]):
         raise NotImplementedError
 
     @override
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"{self.__class__.__name__}({self})"
 
     @override
-    def __str__(self):
+    def __str__(self) -> str:
         return str(self._value_sequence)
 
 
@@ -145,23 +145,23 @@ class MutableIndexObservableSequence(IndexObservableSequence[_S], MutableSequenc
 class MutableValueSequence(MutableObservableSequence[Value[_S]], Generic[_S], ABC):
     @abstractmethod
     @override
-    def append(self, item: _S | Value[_S]): ...
+    def append(self, item: _S | Value[_S]) -> None: ...
 
     @abstractmethod
     @override
-    def extend(self, items: Iterable[_S | Value[_S]]): ...
+    def extend(self, items: Iterable[_S | Value[_S]]) -> None: ...
 
     @abstractmethod
     @override
-    def insert(self, index: SupportsIndex, item: _S | Value[_S]): ...
+    def insert(self, index: SupportsIndex, item: _S | Value[_S]) -> None: ...
 
     @abstractmethod
     @override
-    def __delitem__(self, key: SupportsIndex | slice): ...
+    def __delitem__(self, key: SupportsIndex | slice) -> None: ...
 
     @abstractmethod
     @override
-    def clear(self): ...
+    def clear(self) -> None: ...
 
     @abstractmethod
     @override
@@ -170,16 +170,16 @@ class MutableValueSequence(MutableObservableSequence[Value[_S]], Generic[_S], AB
     @overload
     @abstractmethod
     @override
-    def __setitem__(self, key: int, value: _S | Value[_S]): ...
+    def __setitem__(self, key: int, value: _S | Value[_S]) -> None: ...
 
     @overload
     @abstractmethod
     @override
-    def __setitem__(self, key: slice, value: Iterable[_S | Value[_S]]): ...
+    def __setitem__(self, key: slice, value: Iterable[_S | Value[_S]]) -> None: ...
 
     @abstractmethod
     @override
-    def __setitem__(self, key, value): ...
+    def __setitem__(self, key: int | slice, value: _S | Value[_S] | Iterable[_S | Value[_S]]) -> None: ...
 
 
 class ValueChangedMultipleTimesAction(ElementsChangedAction[_S_co], Generic[_S_co], ABC):
@@ -242,7 +242,7 @@ class SimpleValueChangedMultipleTimesAction(ValueChangedMultipleTimesAction[_S_c
                 self.count == other.count)
 
     @override
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"{self.__class__.__name__}(new_item={self.new_item!r}, old_item={self.old_item!r}, count={self.count})"
 
 
@@ -275,10 +275,10 @@ class IndexObservableSequenceBase(IndexObservableSequence[_S], Generic[_S]):
     def __getitem__(self, index: slice) -> MutableSequence[_S]: ...
 
     @override
-    def __getitem__(self, index):
+    def __getitem__(self, index: SupportsIndex | slice) -> _S | MutableSequence[_S]:
         return self._values[index]
 
-    def _append(self, item: _S):
+    def _append(self, item: _S) -> None:
         self._values.append(item)
         new_length = len(self._values)
         if self.is_observed():
@@ -289,10 +289,10 @@ class IndexObservableSequenceBase(IndexObservableSequence[_S], Generic[_S]):
         else:
             self._len_value.value = new_length
 
-    def is_observed(self):
+    def is_observed(self) -> bool:
         return self._action_event.is_observed() or self._deltas_event.is_observed()
 
-    def _extend(self, items: Iterable[_S]):
+    def _extend(self, items: Iterable[_S]) -> None:
         old_length = len(self._values)
         observed = self.is_observed()
         if observed:
@@ -311,7 +311,7 @@ class IndexObservableSequenceBase(IndexObservableSequence[_S], Generic[_S]):
         else:
             self._len_value.value = new_length
 
-    def _insert(self, index: SupportsIndex, item: _S):
+    def _insert(self, index: SupportsIndex, item: _S) -> None:
         self._values.insert(index, item)
         if self.is_observed():
             with self._len_value.set_delay_notify(len(self._values)):
@@ -321,7 +321,7 @@ class IndexObservableSequenceBase(IndexObservableSequence[_S], Generic[_S]):
         else:
             self._len_value.value = len(self._values)
 
-    def _insert_all(self, index_with_items: Iterable[tuple[int, _S]]):
+    def _insert_all(self, index_with_items: Iterable[tuple[int, _S]]) -> None:
         index_with_items = tuple(index_with_items)
         sorted_index_with_items = tuple(sorted(index_with_items, key=lambda x: x[0]))
         old_length = len(self._values)
@@ -339,17 +339,17 @@ class IndexObservableSequenceBase(IndexObservableSequence[_S], Generic[_S]):
         else:
             self._len_value.value = new_length
 
-    def _remove(self, item: _S):
+    def _remove(self, item: _S) -> None:
         index = self.index(item)
         self._delitem_index(index)
 
-    def _delitem(self, key: SupportsIndex | slice):
+    def _delitem(self, key: SupportsIndex | slice) -> None:
         if isinstance(key, slice):
             self._delitem_slice(key)
         else:
             self._delitem_index(key)
 
-    def _delitem_index(self, key: SupportsIndex):
+    def _delitem_index(self, key: SupportsIndex) -> None:
         index = key.__index__()
         item = self[index]
         self._values.__delitem__(index)
@@ -361,7 +361,7 @@ class IndexObservableSequenceBase(IndexObservableSequence[_S], Generic[_S]):
         else:
             self._len_value.value = len(self._values)
 
-    def _delitem_slice(self, slice_key: slice):
+    def _delitem_slice(self, slice_key: slice) -> None:
         indices = range(*slice_key.indices(len(self._values)))
         if len(indices) == 0:
             return
@@ -375,7 +375,7 @@ class IndexObservableSequenceBase(IndexObservableSequence[_S], Generic[_S]):
             last_indices[item] = index + 1
             yield index
 
-    def _del_all(self, indices: Iterable[SupportsIndex]):
+    def _del_all(self, indices: Iterable[SupportsIndex]) -> None:
         indices_ints: tuple[int, ...] = tuple(index.__index__() for index in indices)
         if len(indices_ints) == 0:
             return
@@ -391,11 +391,11 @@ class IndexObservableSequenceBase(IndexObservableSequence[_S], Generic[_S]):
         else:
             self._len_value.value = len(self._values)
 
-    def _remove_all(self, items: Iterable[_S]):
+    def _remove_all(self, items: Iterable[_S]) -> None:
         indices_to_remove = list(self.indices_of(items))
         self._del_all(indices_to_remove)
 
-    def _clear(self):
+    def _clear(self) -> None:
         if self._deltas_event.is_observed():
             removed_elements_with_index = tuple((enumerate(self)))
         else:
@@ -417,18 +417,20 @@ class IndexObservableSequenceBase(IndexObservableSequence[_S], Generic[_S]):
         return item
 
     @overload
-    def _setitem(self, key: SupportsIndex, value: _S): ...
+    def _setitem(self, key: SupportsIndex, value: _S) -> None: ...
 
     @overload
-    def _setitem(self, key: slice, value: Iterable[_S]): ...
+    def _setitem(self, key: slice, value: Iterable[_S]) -> None: ...
 
-    def _setitem(self, key, value):
+    def _setitem(self, key: SupportsIndex | slice, value: _S | Iterable[_S]) -> None:
         if isinstance(key, slice):
-            self._setitem_slice(key, value)
+            # mypy does not understand the connection between key and value as it could be inferred from the overloads
+            self._setitem_slice(key, value)  # type: ignore[arg-type]
         else:
-            self._setitem_index(key, value)
+            # mypy does not understand the connection between key and value as it could be inferred from the overloads
+            self._setitem_index(key, value)  # type: ignore[arg-type]
 
-    def _setitem_slice(self, key: slice, values: Iterable[_S]):
+    def _setitem_slice(self, key: slice, values: Iterable[_S]) -> None:
         action: AtIndicesDeltasAction[_S] | None = None
         if self.is_observed():
             old_length = len(self._values)
@@ -455,7 +457,7 @@ class IndexObservableSequenceBase(IndexObservableSequence[_S], Generic[_S]):
         else:
             self._len_value.value = len(self._values)
 
-    def _setitem_index(self, key: SupportsIndex, value: _S):
+    def _setitem_index(self, key: SupportsIndex, value: _S) -> None:
         index = key.__index__()
         old_value = self[index]
         self._values.__setitem__(index, value)
@@ -466,10 +468,10 @@ class IndexObservableSequenceBase(IndexObservableSequence[_S], Generic[_S]):
         self._deltas_event(action)
 
     @override
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         return self._values.__eq__(other)
 
-    def _iadd(self, values: Iterable[_S]) -> Self:  # type: ignore[override, misc]
+    def _iadd(self, values: Iterable[_S]) -> Self:
         self._extend(values)
         return self
 
@@ -492,7 +494,7 @@ class IndexObservableSequenceBase(IndexObservableSequence[_S], Generic[_S]):
         self._extend(extend_by)
         return self
 
-    def _reverse(self):
+    def _reverse(self) -> None:
         if self.length_value.value < 2:
             return
         if self._deltas_event.is_observed():
@@ -513,26 +515,26 @@ class IndexObservableSequenceBase(IndexObservableSequence[_S], Generic[_S]):
         return self._len_value
 
     @override
-    def __str__(self):
+    def __str__(self) -> str:
         return str(self._values)
 
     @override
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"{self.__class__.__name__}({self._values!r})"
 
 
 class _ValueCell(Generic[_S]):
-    def __init__(self, value: Value[_S], event: ValueEvent[ValueChangedMultipleTimesAction[_S]]):
+    def __init__(self, value: Value[_S], event: ValueEvent[ValueChangedMultipleTimesAction[_S]]) -> None:
         self._value = value
         self._count = 0
         self._action_event = event
 
-    def on_added(self):
+    def on_added(self) -> None:
         self._count += 1
         if self._count == 1:
             self._value.observe(self._on_value_changed)
 
-    def on_removed(self):
+    def on_removed(self) -> None:
         self._count -= 1
         if self._count == 0:
             self._value.unobserve(self._on_value_changed)
@@ -541,7 +543,7 @@ class _ValueCell(Generic[_S]):
     def count(self) -> int:
         return self._count
 
-    def _on_value_changed(self, new_value: _S, old_value: _S):
+    def _on_value_changed(self, new_value: _S, old_value: _S) -> None:
         self._action_event.emit_lazy(lambda: SimpleValueChangedMultipleTimesAction(new_item=new_value, old_item=old_value, count=self.count))
 
 
@@ -580,13 +582,13 @@ class ValueSequenceBase(ValueSequence[_S], IndexObservableSequenceBase[Value[_S]
     def value_delta_observable(self) -> ValuesObservable[DeltaAction[_S]]:
         return self._final_on_value_delta_action
 
-    def _on_value_sequence_delta(self, action: DeltaAction[Value[_S]]):
+    def _on_value_sequence_delta(self, action: DeltaAction[Value[_S]]) -> None:
         if action.is_add:
             self._on_value_added(action.value)
         else:
             self._on_value_removed(action.value)
 
-    def _on_value_added(self, value: Value[_S]):
+    def _on_value_added(self, value: Value[_S]) -> None:
         try:
             _ = value.constant_value_or_raise
             return
@@ -599,7 +601,7 @@ class ValueSequenceBase(ValueSequence[_S], IndexObservableSequenceBase[Value[_S]
             self._cells[value] = cell
         cell.on_added()
 
-    def _on_value_removed(self, value: Value[_S]):
+    def _on_value_removed(self, value: Value[_S]) -> None:
         try:
             _ = value.constant_value_or_raise
             return
@@ -613,36 +615,36 @@ class ValueSequenceBase(ValueSequence[_S], IndexObservableSequenceBase[Value[_S]
 
 class ObservableList(IndexObservableSequenceBase[_S], MutableIndexObservableSequence[_S], Generic[_S]):
     @override
-    def append(self, item: _S):
+    def append(self, item: _S) -> None:
         self._append(item)
 
     @override
-    def extend(self, items: Iterable[_S]):
+    def extend(self, items: Iterable[_S]) -> None:
         self._extend(items)
 
     @override
-    def insert(self, index: SupportsIndex, item: _S):
+    def insert(self, index: SupportsIndex, item: _S) -> None:
         self._insert(index, item)
 
-    def insert_all(self, items_with_index: Iterable[tuple[int, _S]]):
+    def insert_all(self, items_with_index: Iterable[tuple[int, _S]]) -> None:
         self._insert_all(items_with_index)
 
     @override
-    def remove(self, item: _S):
+    def remove(self, item: _S) -> None:
         self._remove(item)
 
     @override
-    def __delitem__(self, key: SupportsIndex | slice):
+    def __delitem__(self, key: SupportsIndex | slice) -> None:
         self._delitem(key)
 
-    def del_all(self, indices: Iterable[SupportsIndex]):
+    def del_all(self, indices: Iterable[SupportsIndex]) -> None:
         self._del_all(indices)
 
-    def remove_all(self, items: Iterable[_S]):
+    def remove_all(self, items: Iterable[_S]) -> None:
         self._remove_all(items)
 
     @override
-    def clear(self):
+    def clear(self) -> None:
         self._clear()
 
     @override
@@ -651,18 +653,19 @@ class ObservableList(IndexObservableSequenceBase[_S], MutableIndexObservableSequ
 
     @overload
     @override
-    def __setitem__(self, key: SupportsIndex, value: _S): ...
+    def __setitem__(self, key: SupportsIndex, value: _S) -> None: ...
 
     @overload
     @override
-    def __setitem__(self, key: slice, value: Iterable[_S]): ...
+    def __setitem__(self, key: slice, value: Iterable[_S]) -> None: ...
 
     @override
-    def __setitem__(self, key, value):
-        self._setitem(key, value)
+    def __setitem__(self, key: SupportsIndex | slice, value: _S | Iterable[_S]) -> None:
+        # mypy does not understand the connection between key and value as it could be inferred from the overloads
+        self._setitem(key, value)  # type: ignore[arg-type]
 
     @override
-    def __iadd__(self, values: Iterable[_S]) -> Self:  # type: ignore[override, misc]
+    def __iadd__(self, values: Iterable[_S]) -> Self:
         return self._iadd(values)
 
     def __imul__(self, value: SupportsIndex) -> Self:
@@ -672,42 +675,42 @@ class ObservableList(IndexObservableSequenceBase[_S], MutableIndexObservableSequ
         return self._mul(other)
 
     @override
-    def reverse(self):
+    def reverse(self) -> None:
         self._reverse()
 
 
 class ValueList(ValueSequenceBase[_S], MutableIndexObservableSequence[Value[_S]], Generic[_S], ABC):
     @override
-    def append(self, item: Value[_S]):
+    def append(self, item: Value[_S]) -> None:
         self._append(item)
 
     @override
-    def extend(self, items: Iterable[Value[_S]]):
+    def extend(self, items: Iterable[Value[_S]]) -> None:
         self._extend(items)
 
     @override
-    def insert(self, index: SupportsIndex, item: Value[_S]):
+    def insert(self, index: SupportsIndex, item: Value[_S]) -> None:
         self._insert(index, item)
 
-    def insert_all(self, items_with_index: Iterable[tuple[int, Value[_S]]]):
+    def insert_all(self, items_with_index: Iterable[tuple[int, Value[_S]]]) -> None:
         self._insert_all(items_with_index)
 
     @override
-    def remove(self, item: Value[_S]):
+    def remove(self, item: Value[_S]) -> None:
         self._remove(item)
 
     @override
-    def __delitem__(self, key: SupportsIndex | slice):
+    def __delitem__(self, key: SupportsIndex | slice) -> None:
         self._delitem(key)
 
-    def del_all(self, indices: Iterable[SupportsIndex]):
+    def del_all(self, indices: Iterable[SupportsIndex]) -> None:
         self._del_all(indices)
 
-    def remove_all(self, items: Iterable[Value[_S]]):
+    def remove_all(self, items: Iterable[Value[_S]]) -> None:
         self._remove_all(items)
 
     @override
-    def clear(self):
+    def clear(self) -> None:
         self._clear()
 
     @override
@@ -716,18 +719,19 @@ class ValueList(ValueSequenceBase[_S], MutableIndexObservableSequence[Value[_S]]
 
     @overload
     @override
-    def __setitem__(self, key: SupportsIndex, value: Value[_S]): ...
+    def __setitem__(self, key: SupportsIndex, value: Value[_S]) -> None: ...
 
     @overload
     @override
-    def __setitem__(self, key: slice, value: Iterable[Value[_S]]): ...
+    def __setitem__(self, key: slice, value: Iterable[Value[_S]]) -> None: ...
 
     @override
-    def __setitem__(self, key, value):
-        self._setitem(key, value)
+    def __setitem__(self, key: SupportsIndex | slice, value: Value[_S] | Iterable[Value[_S]]) -> None:
+        # mypy does not understand the connection between key and value as it could be inferred from the overloads
+        self._setitem(key, value)  # type: ignore[arg-type]
 
     @override
-    def __iadd__(self, values: Iterable[Value[_S]]) -> Self:  # type: ignore[override, misc]
+    def __iadd__(self, values: Iterable[Value[_S]]) -> Self:
         return self._iadd(values)
 
     def __imul__(self, value: SupportsIndex) -> Self:
@@ -737,7 +741,7 @@ class ValueList(ValueSequenceBase[_S], MutableIndexObservableSequence[Value[_S]]
         return self._mul(other)
 
     @override
-    def reverse(self):
+    def reverse(self) -> None:
         self._reverse()
 
 
@@ -773,11 +777,11 @@ class TypedValueList(ValueList[_S], Generic[_S]):
         super().__init__(_to_values(values, checker, constant_factory))
 
     @override
-    def append(self, item: _S | Value[_S]):
+    def append(self, item: _S | Value[_S]) -> None:
         super().append(_to_value(item, self._checker, self._constant_factory))
 
     @override
-    def extend(self, items: Iterable[_S | Value[_S]]):
+    def extend(self, items: Iterable[_S | Value[_S]]) -> None:
         super().extend(_to_values(items, self._checker, self._constant_factory))
 
     @override
@@ -786,37 +790,39 @@ class TypedValueList(ValueList[_S], Generic[_S]):
         return self
 
     @override
-    def insert(self, index: SupportsIndex, item: _S | Value[_S]):
+    def insert(self, index: SupportsIndex, item: _S | Value[_S]) -> None:
         super().insert(index, _to_value(item, self._checker, self._constant_factory))
 
     @override
-    def insert_all(self, items_with_index: Iterable[tuple[int, _S | Value[_S]]]):
+    def insert_all(self, items_with_index: Iterable[tuple[int, _S | Value[_S]]]) -> None:
         super().insert_all(_with_indices_to_values_with_indices(items_with_index, self._checker, self._constant_factory))
 
     @override
-    def remove(self, item: _S | Value[_S]):
+    def remove(self, item: _S | Value[_S]) -> None:
         super().remove(_to_value(item, self._checker, self._constant_factory))
 
     @override
-    def remove_all(self, items: Iterable[_S | Value[_S]]):
+    def remove_all(self, items: Iterable[_S | Value[_S]]) -> None:
         super().remove_all(_to_values(items, self._checker, self._constant_factory))
 
     @overload
     @override
-    def __setitem__(self, key: SupportsIndex, value: _S | Value[_S]): ...
+    def __setitem__(self, key: SupportsIndex, value: _S | Value[_S]) -> None: ...
 
     @overload
     @override
-    def __setitem__(self, key: slice, value: Iterable[_S | Value[_S]]): ...
+    def __setitem__(self, key: slice, value: Iterable[_S | Value[_S]]) -> None: ...
 
     @override
-    def __setitem__(self, key, value):
+    def __setitem__(self, key: SupportsIndex | slice, value: _S | Value[_S] | Iterable[_S | Value[_S]]) -> None:
         if isinstance(key, slice):
-            self._setitem_slice(key, _to_values(value, self._checker, self._constant_factory))
+            # mypy does not understand the connection between key and value as it could be inferred from the overloads
+            self._setitem_slice(key, _to_values(value, self._checker, self._constant_factory))  # type: ignore[arg-type]
         else:
-            self._setitem_index(key, _to_value(value, self._checker, self._constant_factory))
+            # mypy does not understand the connection between key and value as it could be inferred from the overloads
+            self._setitem_index(key, _to_value(value, self._checker, self._constant_factory))  # type: ignore[arg-type]
 
-    def _compare_value(self, self_value: Value[int], other_value: Value[int] | int) -> bool:
+    def _compare_value(self, self_value: Value[_S], other_value: Value[_S] | _S) -> bool:
         if self_value == other_value:
             return True
         if self._checker(other_value):
@@ -829,7 +835,7 @@ class TypedValueList(ValueList[_S], Generic[_S]):
         return False
 
     @override
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         if not isinstance(other, Sequence):
             return NotImplemented
         if len(self) != len(other):
@@ -841,12 +847,12 @@ class TypedValueList(ValueList[_S], Generic[_S]):
 
 
 class MappedIndexObservableSequence(IndexObservableSequenceBase[_S], Generic[_S]):
-    def __init__(self, mapped_from: IndexObservableSequence[_T], map_func: Callable[[_T], _S]):
+    def __init__(self, mapped_from: IndexObservableSequence[_T], map_func: Callable[[_T], _S]) -> None:
         super().__init__(map_func(item) for item in mapped_from)
         self._mapped_from = mapped_from
         self._map_func = map_func
 
-        def on_action(other_action: AtIndicesDeltasAction[_T] | ClearAction[_T] | ReverseAction[_T]):
+        def on_action(other_action: AtIndicesDeltasAction[_T] | ClearAction[_T] | ReverseAction[_T]) -> None:
             if isinstance(other_action, AtIndicesDeltasAction):
                 if isinstance(other_action, ExtendAction):
                     self._extend((self._map_func(item) for item in other_action.items))
@@ -871,12 +877,12 @@ class MappedIndexObservableSequence(IndexObservableSequenceBase[_S], Generic[_S]
 
         mapped_from.on_change.observe(on_action)
 
-    def _is_observed(self):
+    def _is_observed(self) -> bool:
         return self._action_event.is_observed() or self._deltas_event.is_observed()
 
     @property
     @override
-    def on_change(self) -> ValueObservable[AtIndicesDeltasAction[_S] | ClearAction | ReverseAction]:
+    def on_change(self) -> ValueObservable[AtIndicesDeltasAction[_S] | ClearAction[_S] | ReverseAction[_S]]:
         return self._action_event
 
     @property
@@ -902,14 +908,14 @@ class MappedIndexObservableSequence(IndexObservableSequenceBase[_S], Generic[_S]
     def __getitem__(self, index: slice) -> MutableSequence[_S]: ...
 
     @override
-    def __getitem__(self, index):
+    def __getitem__(self, index: SupportsIndex | slice) -> _S | MutableSequence[_S]:
         return self._values[index]
 
 
 class _EmptyObservableSequence(IndexObservableSequence[_S], Generic[_S]):
     @property
     @override
-    def on_change(self) -> ValueObservable[AtIndicesDeltasAction[_S] | ClearAction | ReverseAction]:
+    def on_change(self) -> ValueObservable[AtIndicesDeltasAction[_S] | ClearAction[_S] | ReverseAction[_S]]:
         return void_value_observable()
 
     @property
@@ -951,7 +957,7 @@ class _EmptyObservableSequence(IndexObservableSequence[_S], Generic[_S]):
     def __getitem__(self, index: slice) -> Sequence[_S]: ...
 
     @override
-    def __getitem__(self, index):
+    def __getitem__(self, index: object) -> _S | Sequence[_S]:
         raise IndexError("Empty sequence has no items")
 
     @override
@@ -959,16 +965,16 @@ class _EmptyObservableSequence(IndexObservableSequence[_S], Generic[_S]):
         return iter(())
 
     @override
-    def __contains__(self, item) -> bool:
+    def __contains__(self, item: object) -> bool:
         return False
 
     @override
-    def __str__(self):
+    def __str__(self) -> str:
         return "[]"
 
 
-EMPTY_SEQUENCE: IndexObservableSequence = _EmptyObservableSequence()
+EMPTY_SEQUENCE: IndexObservableSequence[Any] = _EmptyObservableSequence()
 
 
 def empty_sequence() -> IndexObservableSequence[_S]:
-    return EMPTY_SEQUENCE  # type: ignore[return-value]
+    return EMPTY_SEQUENCE

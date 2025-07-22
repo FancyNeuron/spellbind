@@ -136,5 +136,5 @@ class ThreeToStrValue(ThreeToOneValue[_S, _T, _U, str], StrValue, Generic[_S, _T
 
 
 class ToStrValue(OneToOneValue[Any, str], StrValue):
-    def __init__(self, value: Value[Any]):
+    def __init__(self, value: Value[Any]) -> None:
         super().__init__(str, value)

@@ -7,6 +7,7 @@ from typing import TypeVar, Generic, Collection, Callable, Iterable, Iterator
 from typing_extensions import override
 
 from spellbind.actions import CollectionAction, DeltaAction, DeltasAction, ClearAction
+from spellbind.deriveds import Derived
 from spellbind.event import BiEvent
 from spellbind.int_values import IntValue
 from spellbind.observables import ValuesObservable, ValueObservable, BiObservable
@@ -52,8 +53,6 @@ class ObservableCollection(Collection[_S_co], Generic[_S_co], ABC):
                add_reducer: Callable[[_T, _S_co], _T],
                remove_reducer: Callable[[_T, _S_co], _T],
                initial: _T) -> Value[_T]:
-        from spellbind.str_collections import ReducedValue
-
         return ReducedValue(self,
                             add_reducer=add_reducer,
                             remove_reducer=remove_reducer,
@@ -97,7 +96,7 @@ class ReducedValue(Value[_S], Generic[_S]):
         self._collection.on_change.observe(self._on_action)
         self._on_change: BiEvent[_S, _S] = BiEvent[_S, _S]()
 
-    def _on_action(self, action: CollectionAction[_T]):
+    def _on_action(self, action: CollectionAction[_T]) -> None:
         if action.is_permutation_only:
             return
         if isinstance(action, DeltasAction):
@@ -111,7 +110,7 @@ class ReducedValue(Value[_S], Generic[_S]):
         elif isinstance(action, ClearAction):
             self._set_value(self._initial)
 
-    def _set_value(self, value: _S):
+    def _set_value(self, value: _S) -> None:
         if self._value != value:
             old_value = self._value
             self._value = value
@@ -129,7 +128,7 @@ class ReducedValue(Value[_S], Generic[_S]):
 
     @property
     @override
-    def derived_from(self) -> frozenset[Value]:
+    def derived_from(self) -> frozenset[Derived]:
         return EMPTY_FROZEN_SET
 
 
@@ -154,7 +153,7 @@ class ValueCollection(ObservableCollection[Value[_S]], Generic[_S], ABC):
 
 
 class CombinedValue(Value[_S], Generic[_S]):
-    def __init__(self, collection: ObservableCollection[_T], combiner: Callable[[Iterable[_T]], _S]):
+    def __init__(self, collection: ObservableCollection[_T], combiner: Callable[[Iterable[_T]], _S]) -> None:
         super().__init__()
         self._collection = collection
         self._combiner = combiner
@@ -167,7 +166,7 @@ class CombinedValue(Value[_S], Generic[_S]):
     def observable(self) -> BiObservable[_S, _S]:
         return self._on_change
 
-    def _recalculate_value(self):
+    def _recalculate_value(self) -> None:
         old_value = self._value
         self._value = self._combiner(self._collection)
         if self._value != old_value:
@@ -180,5 +179,5 @@ class CombinedValue(Value[_S], Generic[_S]):
 
     @property
     @override
-    def derived_from(self) -> frozenset[Value]:
+    def derived_from(self) -> frozenset[Derived]:
         return EMPTY_FROZEN_SET

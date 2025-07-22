@@ -214,13 +214,13 @@ class IntConstant(IntValue, Constant[int]):
             return IntConstant(value)
 
     @override
-    def __abs__(self):
+    def __abs__(self) -> IntConstant:
         if self.value >= 0:
             return self
         return IntConstant.of(-self.value)
 
     @override
-    def __neg__(self):
+    def __neg__(self) -> IntConstant:
         return IntConstant.of(-self.value)
 
 
@@ -240,7 +240,7 @@ class ManyIntsToIntValue(ManyToSameValue[int], IntValue):
 
 
 class AbsIntValue(OneToOneValue[int, int], IntValue):
-    def __init__(self, value: Value[int]):
+    def __init__(self, value: Value[int]) -> None:
         super().__init__(abs, value)
 
     @override
@@ -249,7 +249,7 @@ class AbsIntValue(OneToOneValue[int, int], IntValue):
 
 
 class NegateIntValue(OneToOneValue[int, int], IntValue):
-    def __init__(self, value: Value[int]):
+    def __init__(self, value: Value[int]) -> None:
         super().__init__(operator.neg, value)
 
     @override

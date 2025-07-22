@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import itertools
 from abc import ABC, abstractmethod
-from typing import Generic, SupportsIndex, Iterable, TypeVar, Callable
+from typing import Generic, SupportsIndex, Iterable, TypeVar, Callable, Any
 
 from typing_extensions import override
 
@@ -20,7 +20,7 @@ class CollectionAction(Generic[_S_co], ABC):
     def map(self, transformer: Callable[[_S_co], _T]) -> CollectionAction[_T]: ...
 
     @override
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"{self.__class__.__name__}()"
 
 
@@ -98,12 +98,12 @@ class AddOneAction(DeltaAction[_S_co], Generic[_S_co], ABC):
         return SimpleAddOneAction(transformer(self.value))
 
     @override
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"{self.__class__.__name__}(value={self.value})"
 
 
 class SimpleAddOneAction(AddOneAction[_S_co], Generic[_S_co]):
-    def __init__(self, item: _S_co):
+    def __init__(self, item: _S_co) -> None:
         self._item = item
 
     @property
@@ -123,12 +123,12 @@ class RemoveOneAction(DeltaAction[_S_co], Generic[_S_co], ABC):
         return SimpleRemoveOneAction(transformer(self.value))
 
     @override
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"{self.__class__.__name__}(value={self.value})"
 
 
 class SimpleRemoveOneAction(RemoveOneAction[_S_co], Generic[_S_co]):
-    def __init__(self, item: _S_co):
+    def __init__(self, item: _S_co) -> None:
         self._item = item
 
     @property
@@ -167,13 +167,13 @@ class SimpleElementsChangedAction(ElementsChangedAction[_S_co], Generic[_S_co]):
         return self._changes
 
     @override
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         if not isinstance(other, ElementsChangedAction):
             return NotImplemented
         return self.changes == other.changes
 
     @override
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"{self.__class__.__name__}(changes={self.changes})"
 
 
@@ -212,22 +212,22 @@ class SimpleOneElementChangedAction(OneElementChangedAction[_S_co], Generic[_S_c
         return self._old_item
 
     @override
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         if not isinstance(other, OneElementChangedAction):
             return NotImplemented
-        return (self.new_item == other.new_item and
-                self.old_item == other.old_item)
+        # mypy --strict complains that equality between two "Any" does return Any, not bool
+        return bool(self.new_item == other.new_item and self.old_item == other.old_item)
 
     @override
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"{self.__class__.__name__}(new_item={self.new_item}, old_item={self.old_item})"
 
 
-CLEAR_ACTION: ClearAction = ClearAction()
+_CLEAR_ACTION: ClearAction[Any] = ClearAction()
 
 
 def clear_action() -> ClearAction[_S_co]:
-    return CLEAR_ACTION  # type: ignore[return-value]
+    return _CLEAR_ACTION
 
 
 class SequenceAction(CollectionAction[_S_co], Generic[_S_co], ABC):
@@ -272,7 +272,7 @@ class AtIndexDeltaAction(AtIndexAction[_S_co], DeltaAction[_S_co], AtIndicesDelt
     def map(self, transformer: Callable[[_S_co], _T]) -> AtIndexDeltaAction[_T]: ...
 
     @override
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"{self.__class__.__name__}(index={self.index}, value={self.value})"
 
 
@@ -283,7 +283,7 @@ class InsertAction(AtIndexDeltaAction[_S_co], AddOneAction[_S_co], Generic[_S_co
 
 
 class SimpleInsertAction(InsertAction[_S_co], Generic[_S_co]):
-    def __init__(self, index: SupportsIndex, item: _S_co):
+    def __init__(self, index: SupportsIndex, item: _S_co) -> None:
         self._index = index
         self._item = item
 
@@ -298,10 +298,11 @@ class SimpleInsertAction(InsertAction[_S_co], Generic[_S_co]):
         return self._item
 
     @override
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         if not isinstance(other, InsertAction):
             return NotImplemented
-        return self.index == other.index and self.value == other.value
+        # mypy --strict complains that equality between two "Any" does return Any, not bool
+        return self.index == other.index and bool(self.value == other.value)
 
 
 class InsertAllAction(AtIndicesDeltasAction[_S_co], Generic[_S_co], ABC):
@@ -319,10 +320,11 @@ class InsertAllAction(AtIndicesDeltasAction[_S_co], Generic[_S_co], ABC):
         return SimpleInsertAllAction(tuple((index, transformer(item)) for index, item in self.index_with_items))
 
     @override
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         if not isinstance(other, InsertAllAction):
             return NotImplemented
-        return self.index_with_items == other.index_with_items
+        # mypy --strict complains that equality between two "Any" does return Any, not bool
+        return bool(self.index_with_items == other.index_with_items)
 
 
 class SimpleInsertAllAction(InsertAllAction[_S_co], Generic[_S_co]):
@@ -341,14 +343,15 @@ class RemoveAtIndexAction(AtIndexDeltaAction[_S_co], RemoveOneAction[_S_co], Gen
         return SimpleRemoveAtIndexAction(self.index, transformer(self.value))
 
     @override
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         if not isinstance(other, RemoveAtIndexAction):
             return NotImplemented
-        return self.index == other.index and self.value == other.value
+        # mypy --strict complains that equality between two "Any" does return Any, not bool
+        return self.index == other.index and bool(self.value == other.value)
 
 
 class SimpleRemoveAtIndexAction(RemoveAtIndexAction[_S_co], RemoveOneAction[_S_co], Generic[_S_co]):
-    def __init__(self, index: SupportsIndex, item: _S_co):
+    def __init__(self, index: SupportsIndex, item: _S_co) -> None:
         self._index = index.__index__()
         self._item = item
 
@@ -377,13 +380,13 @@ class RemoveAtIndicesAction(AtIndicesDeltasAction[_S_co], Generic[_S_co], ABC):
         ))
 
     @override
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         if not isinstance(other, RemoveAtIndicesAction):
             return NotImplemented
-        return self.removed_elements_with_index == other.removed_elements_with_index
+        return bool(self.removed_elements_with_index == other.removed_elements_with_index)
 
     @override
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"{self.__class__.__name__}({self.removed_elements_with_index})"
 
 
@@ -439,16 +442,17 @@ class SetAtIndexAction(AtIndexAction[_S_co], AtIndicesDeltasAction[_S_co], OneEl
         return SimpleSetAtIndexAction(self.index, old_item=transformer(self.old_item), new_item=transformer(self.new_item))
 
     @override
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"{self.__class__.__name__}(index={self.index}, old_item={self.old_item}, new_item={self.new_item})"
 
     @override
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         if not isinstance(other, SetAtIndexAction):
             return NotImplemented
+        # mypy --strict complains that equality between two "Any" does return Any, not bool
         return (self.index == other.index and
-                self.old_item == other.old_item and
-                self.new_item == other.new_item)
+                bool(self.old_item == other.old_item and
+                     self.new_item == other.new_item))
 
 
 class SimpleSetAtIndexAction(SetAtIndexAction[_S_co], Generic[_S_co]):
@@ -498,15 +502,16 @@ class SliceSetAction(AtIndicesDeltasAction[_S_co], Generic[_S_co], ABC):
                                     old_items=tuple(transformer(item) for item in self.old_items))
 
     @override
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         if not isinstance(other, SliceSetAction):
             return NotImplemented
+        # mypy --strict complains that equality between two "Any" does return Any, not bool
         return (self.indices == other.indices and
-                self.new_items == other.new_items and
-                self.old_items == other.old_items)
+                bool(self.new_items == other.new_items and
+                     self.old_items == other.old_items))
 
     @override
-    def __repr__(self):
+    def __repr__(self) -> str:
         return (f"{self.__class__.__name__}(indices={self.indices}, "
                 f"new_items={self.new_items}, old_items={self.old_items})")
 
@@ -571,13 +576,14 @@ class SetAtIndicesAction(AtIndicesDeltasAction[_S_co], Generic[_S_co], ABC):
                                               in self.indices_with_new_and_old_items))
 
     @override
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         if not isinstance(other, SetAtIndicesAction):
             return NotImplemented
-        return self.indices_with_new_and_old_items == other.indices_with_new_and_old_items
+        # mypy --strict complains that equality between two "Any" does return Any, not bool
+        return bool(self.indices_with_new_and_old_items == other.indices_with_new_and_old_items)
 
     @override
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"{self.__class__.__name__}(indices_with_new_and_old_items={self.indices_with_new_and_old_items})"
 
 
@@ -633,14 +639,14 @@ class ExtendAction(AtIndicesDeltasAction[_S_co], SequenceAction[_S_co], Generic[
         return SimpleExtendAction(self.old_sequence_length, tuple(transformer(item) for item in self.items))
 
     @override
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         if not isinstance(other, ExtendAction):
             return NotImplemented
         return (self.old_sequence_length == other.old_sequence_length and
                 tuple(self.items) == tuple(other.items))
 
     @override
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"{self.__class__.__name__}(old_sequence_length={self.old_sequence_length}, items={self.items})"
 
 
@@ -660,8 +666,8 @@ class SimpleExtendAction(ExtendAction[_S_co], Generic[_S_co]):
         return self._old_sequence_length
 
 
-REVERSE_SEQUENCE_ACTION: ReverseAction = ReverseAction()
+REVERSE_SEQUENCE_ACTION: ReverseAction[Any] = ReverseAction()
 
 
 def reverse_action() -> ReverseAction[_S_co]:
-    return REVERSE_SEQUENCE_ACTION  # type: ignore[return-value]
+    return REVERSE_SEQUENCE_ACTION

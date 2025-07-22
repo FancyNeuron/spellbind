@@ -5,7 +5,7 @@ from typing_extensions import deprecated, override
 from abc import ABC, abstractmethod
 from contextlib import contextmanager
 from typing import TypeVar, Generic, Optional, Iterable, TYPE_CHECKING, Callable, Sequence, ContextManager, \
-    Generator
+    Generator, Any
 
 from spellbind.deriveds import Derived
 from spellbind.event import BiEvent
@@ -18,7 +18,7 @@ if TYPE_CHECKING:
     from spellbind.float_values import FloatValue  # pragma: no cover
 
 
-EMPTY_FROZEN_SET: frozenset = frozenset()
+EMPTY_FROZEN_SET: frozenset[Any] = frozenset()
 
 _S = TypeVar("_S")
 _T = TypeVar("_T")
@@ -58,7 +58,7 @@ class Value(Generic[_S], Derived, ABC):
     def unobserve(self, observer: Observer | ValueObserver[_S] | BiObserver[_S, _S]) -> None:
         self.observable.unobserve(observer=observer)
 
-    def is_observed(self, by: Callable | None = None) -> bool:
+    def is_observed(self, by: Callable[..., Any] | None = None) -> bool:
         return self.observable.is_observed(by=by)
 
     def to_str(self) -> StrValue:
@@ -88,7 +88,7 @@ class Value(Generic[_S], Derived, ABC):
     def constant_value_or_raise(self) -> _S:
         raise NotConstantError
 
-    def decompose_operands(self, operator_: Callable) -> Sequence[Value[_S] | _S]:
+    def decompose_operands(self, operator_: Callable[..., Any]) -> Sequence[Value[_S] | _S]:
         return (self,)
 
     @override
@@ -191,7 +191,7 @@ class SimpleVariable(Variable[_S], Generic[_S]):
     _on_change: BiEvent[_S, _S]
     _bound_to: Optional[Value[_S]]
 
-    def __init__(self, value: _S):
+    def __init__(self, value: _S) -> None:
         self._bound_to_set = EMPTY_FROZEN_SET
         self._value = value
         self._on_change = BiEvent[_S, _S]()
@@ -278,7 +278,7 @@ class SimpleVariable(Variable[_S], Generic[_S]):
 class Constant(Value[_S], Generic[_S]):
     _value: _S
 
-    def __init__(self, value: _S):
+    def __init__(self, value: _S) -> None:
         self._value = value
 
     @property
@@ -315,18 +315,19 @@ class Constant(Value[_S], Generic[_S]):
         return Constant(value)
 
     @override
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         if not isinstance(other, Constant):
             return NotImplemented
-        return self._value == other._value
+        # mypy --strict complains that equality between two "Any" does return Any, not bool
+        return bool(self._value == other.constant_value_or_raise)
 
     @override
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash(self._value)
 
 
 class DerivedValueBase(Value[_S], Generic[_S], ABC):
-    def __init__(self, *derived_from: Value):
+    def __init__(self, *derived_from: Value[Any]):
         self._derived_from = frozenset(derived_from)
         self._on_change: BiEvent[_S, _S] = BiEvent[_S, _S]()
         for value in derived_from:
@@ -340,7 +341,7 @@ class DerivedValueBase(Value[_S], Generic[_S], ABC):
 
     @property
     @override
-    def derived_from(self) -> frozenset[Value]:
+    def derived_from(self) -> frozenset[Derived]:
         return self._derived_from
 
     def _on_dependency_changed(self) -> None:
@@ -362,7 +363,7 @@ class DerivedValueBase(Value[_S], Generic[_S], ABC):
 class OneToOneValue(DerivedValueBase[_T], Generic[_S, _T]):
     _getter: Callable[[], _S]
 
-    def __init__(self, transformer: Callable[[_S], _T], of: Value[_S]):
+    def __init__(self, transformer: Callable[[_S], _T], of: Value[_S]) -> None:
         self._getter = _create_value_getter(of)
         self._of = of
         self._transformer = transformer
@@ -388,7 +389,7 @@ class ManyToOneValue(DerivedValueBase[_T], Generic[_S, _T]):
 
 class ManyToSameValue(ManyToOneValue[_S, _S], Generic[_S]):
     @override
-    def decompose_operands(self, transformer: Callable) -> Sequence[Value[_S] | _S]:
+    def decompose_operands(self, transformer: Callable[..., _S]) -> Sequence[Value[_S] | _S]:
         if transformer == self._transformer:
             return self._input_values
         return (self,)
@@ -437,7 +438,7 @@ def get_constant_of_generic_like(value: _S | Value[_S]) -> _S:
     return value
 
 
-def decompose_operands_of_generic_like(operator_: Callable, value: _S | Value[_S]) -> Sequence[_S | Value[_S]]:
+def decompose_operands_of_generic_like(operator_: Callable[..., _S], value: _S | Value[_S]) -> Sequence[_S | Value[_S]]:
     if isinstance(value, Value):
         return value.decompose_operands(operator_)
     return (value,)

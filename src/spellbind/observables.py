@@ -11,7 +11,7 @@ from spellbind.functions import count_positional_parameters, assert_parameter_ma
 _S_contra = TypeVar("_S_contra", contravariant=True)
 _T_contra = TypeVar("_T_contra", contravariant=True)
 _U_contra = TypeVar("_U_contra", contravariant=True)
-_I_contra = TypeVar("_I_contra", bound=Iterable, contravariant=True)
+_I_contra = TypeVar("_I_contra", bound=Iterable[Any], contravariant=True)
 
 _S_co = TypeVar("_S_co", covariant=True)
 _T_co = TypeVar("_T_co", covariant=True)
@@ -22,10 +22,10 @@ _T = TypeVar("_T")
 _U = TypeVar("_U")
 _V = TypeVar("_V")
 _W = TypeVar("_W")
-_I = TypeVar("_I", bound=Iterable)
+_I = TypeVar("_I", bound=Iterable[Any])
 
 
-_O = TypeVar('_O', bound=Callable)
+_O = TypeVar('_O', bound=Callable[..., Any])
 
 
 class Observer(Protocol):
@@ -61,7 +61,7 @@ class DeadReferenceError(RemoveSubscriptionError):
 
 
 class Subscription(ABC):
-    def __init__(self, observer: Callable, times: int | None, on_silent_change: Callable[[bool], None]):
+    def __init__(self, observer: Callable[..., Any], times: int | None, on_silent_change: Callable[[bool], None]) -> None:
         self._positional_parameter_count = -1
         if not has_var_args(observer):
             self._positional_parameter_count = count_positional_parameters(observer)
@@ -70,7 +70,7 @@ class Subscription(ABC):
         self._silent = False
         self._on_silent_change = on_silent_change
 
-    def _call(self, observer: Callable, *args) -> None:
+    def _call(self, observer: Callable[..., Any], *args: Any) -> None:
         if not self._silent:
             self._call_counter += 1
             if self._positional_parameter_count == -1:
@@ -100,46 +100,46 @@ class Subscription(ABC):
             self._on_silent_change(value)
 
     @abstractmethod
-    def __call__(self, *args) -> None: ...
+    def __call__(self, *args: Any) -> None: ...
 
     @abstractmethod
-    def matches_observer(self, observer: Callable) -> bool: ...
+    def matches_observer(self, observer: Callable[..., Any]) -> bool: ...
 
 
 class StrongSubscription(Subscription):
-    def __init__(self, observer: Callable, times: int | None, on_silent_change: Callable[[bool], None]):
+    def __init__(self, observer: Callable[..., Any], times: int | None, on_silent_change: Callable[[bool], None]) -> None:
         super().__init__(observer, times, on_silent_change)
         self._observer = observer
 
     @override
-    def __call__(self, *args) -> None:
+    def __call__(self, *args: Any) -> None:
         self._call(self._observer, *args)
 
     @override
-    def matches_observer(self, observer: Callable) -> bool:
+    def matches_observer(self, observer: Callable[..., Any]) -> bool:
         return self._observer == observer
 
 
 class StrongManyToOneSubscription(Subscription):
-    def __init__(self, observer: Callable, times: int | None, on_silent_change: Callable[[bool], None]):
+    def __init__(self, observer: Callable[..., Any], times: int | None, on_silent_change: Callable[[bool], None]) -> None:
         super().__init__(observer, times, on_silent_change)
         self._observer = observer
 
     @override
-    def __call__(self, *args_args) -> None:
+    def __call__(self, *args_args: Any) -> None:
         for args in args_args:
             for v in args:
                 self._call(self._observer, v)
 
     @override
-    def matches_observer(self, observer: Callable) -> bool:
+    def matches_observer(self, observer: Callable[..., Any]) -> bool:
         return self._observer == observer
 
 
 class WeakSubscription(Subscription):
-    _ref: ref[Callable] | WeakMethod
+    _ref: ref[Callable[..., Any]] | WeakMethod[Callable[..., Any]]
 
-    def __init__(self, observer: Callable, times: int | None, on_silent_change: Callable[[bool], None]):
+    def __init__(self, observer: Callable[..., Any], times: int | None, on_silent_change: Callable[[bool], None]) -> None:
         super().__init__(observer, times, on_silent_change)
         if hasattr(observer, '__self__'):
             self._ref = WeakMethod(observer)
@@ -147,21 +147,21 @@ class WeakSubscription(Subscription):
             self._ref = ref(observer)
 
     @override
-    def __call__(self, *args) -> None:
+    def __call__(self, *args: Any) -> None:
         observer = self._ref()
         if observer is None:
             raise DeadReferenceError()
         self._call(observer, *args)
 
     @override
-    def matches_observer(self, observer: Callable) -> bool:
+    def matches_observer(self, observer: Callable[..., Any]) -> bool:
         return self._ref() == observer
 
 
 class WeakManyToOneSubscription(Subscription):
-    _ref: ref[Callable] | WeakMethod
+    _ref: ref[Callable[..., Any]] | WeakMethod[Callable[..., Any]]
 
-    def __init__(self, observer: Callable, times: int | None, on_silent_change: Callable[[bool], None]):
+    def __init__(self, observer: Callable[..., Any], times: int | None, on_silent_change: Callable[[bool], None]) -> None:
         super().__init__(observer, times, on_silent_change)
         if hasattr(observer, '__self__'):
             self._ref = WeakMethod(observer)
@@ -169,7 +169,7 @@ class WeakManyToOneSubscription(Subscription):
             self._ref = ref(observer)
 
     @override
-    def __call__(self, *args_args) -> None:
+    def __call__(self, *args_args: Any) -> None:
         observer = self._ref()
         if observer is None:
             raise DeadReferenceError()
@@ -178,7 +178,7 @@ class WeakManyToOneSubscription(Subscription):
                 self._call(observer, v)
 
     @override
-    def matches_observer(self, observer: Callable) -> bool:
+    def matches_observer(self, observer: Callable[..., Any]) -> bool:
         return self._ref() == observer
 
 
@@ -324,7 +324,7 @@ class ValuesObservable(Observable, Generic[_S_co], ABC):
 class _BaseObservable(Generic[_O], ABC):
     _subscriptions: list[Subscription]
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self._subscriptions = []
         self._active_subscription_count = 0
@@ -350,12 +350,12 @@ class _BaseObservable(Generic[_O], ABC):
         self._append_subscription(subscription)
         return subscription
 
-    def _append_subscription(self, subscription: Subscription):
+    def _append_subscription(self, subscription: Subscription) -> None:
         self._subscriptions.append(subscription)
         if not subscription.silent:
             self._active_subscription_count += 1
 
-    def _del_subscription(self, index: int):
+    def _del_subscription(self, index: int) -> None:
         sub = self._subscriptions.pop(index)
         if not sub.silent:
             self._active_subscription_count -= 1
@@ -425,7 +425,7 @@ class _SingleBaseObservable(_BaseObservable[_O], Generic[_O], ABC):
 
 
 class _DerivedObservableBase(_BaseObservable[_O], Generic[_O], ABC):
-    def __init__(self, weakly: bool, transformer: Callable | None, predicate: Callable | None):
+    def __init__(self, weakly: bool, transformer: Callable[..., Any] | None, predicate: Callable[..., Any] | None) -> None:
         super().__init__()
         if transformer is None:
 
@@ -436,12 +436,12 @@ class _DerivedObservableBase(_BaseObservable[_O], Generic[_O], ABC):
         self._weakly = weakly
 
     @override
-    def _append_subscription(self, subscription: Subscription):
+    def _append_subscription(self, subscription: Subscription) -> None:
         super()._append_subscription(subscription)
         self._set_subscriptions_silent(False)
 
     @override
-    def _del_subscription(self, index: int):
+    def _del_subscription(self, index: int) -> None:
         super()._del_subscription(index)
         if not self.is_observed():
             self._set_subscriptions_silent(True)
@@ -455,16 +455,16 @@ class _DerivedObservableBase(_BaseObservable[_O], Generic[_O], ABC):
         else:
             self._set_subscriptions_silent(False)
 
-    def _on_derived_emit(self, *values) -> None:
+    def _on_derived_emit(self, *values: Any) -> None:
         if self._predicate is None or self._predicate(*values):
             self._emit_n_lazy(lambda: self._transformer(*values))
 
     @abstractmethod
-    def _set_subscriptions_silent(self, silent: bool): ...
+    def _set_subscriptions_silent(self, silent: bool) -> None: ...
 
 
 class _DerivedFromOneObservableBase(_DerivedObservableBase[_O], Generic[_O], ABC):
-    def __init__(self, derived_from: Observable, transformer: Callable, weakly: bool, predicate: Callable | None):
+    def __init__(self, derived_from: Observable, transformer: Callable[..., Any], weakly: bool, predicate: Callable[..., Any] | None) -> None:
         super().__init__(weakly, transformer, predicate)
         self._derived_from = derived_from
 
@@ -475,12 +475,14 @@ class _DerivedFromOneObservableBase(_DerivedObservableBase[_O], Generic[_O], ABC
         self._set_subscriptions_silent(True)
 
     @override
-    def _set_subscriptions_silent(self, silent: bool):
+    def _set_subscriptions_silent(self, silent: bool) -> None:
         self._derived_from_subscription.silent = silent
 
 
 class _DerivedFromManyObservableBase(_DerivedObservableBase[_O], Generic[_O], ABC):
-    def __init__(self, derived_from: Iterable[Observable], weakly: bool, transformer: Callable | None, predicate: Callable | None):
+    def __init__(self, derived_from: Iterable[Observable], weakly: bool,
+                 transformer: Callable[..., Any] | None,
+                 predicate: Callable[..., Any] | None) -> None:
         super().__init__(weakly, transformer=transformer, predicate=predicate)
         self._derived_from = derived_from
         if self._weakly:
@@ -490,7 +492,7 @@ class _DerivedFromManyObservableBase(_DerivedObservableBase[_O], Generic[_O], AB
         self._set_subscriptions_silent(True)
 
     @override
-    def _set_subscriptions_silent(self, silent: bool):
+    def _set_subscriptions_silent(self, silent: bool) -> None:
         for sub in self._derived_from_subscriptions:
             sub.silent = silent
 
@@ -633,7 +635,7 @@ class MappedValuesObservable(_DerivedFromOneObservableBase[Observer | ValuesObse
         super().__init__(derived_from, transformer, weakly, predicate)
 
     @override
-    def _on_derived_emit(self, values) -> None:
+    def _on_derived_emit(self, values: Any) -> None:
         predicate = self._predicate
         if predicate is None:
             self._emit_single_lazy(lambda: tuple(self._transformer(value) for value in values))
@@ -657,7 +659,7 @@ class MappedValueObservable(_DerivedFromOneObservableBase[Observer | ValueObserv
         return 1
 
     @override
-    def _on_derived_emit(self, value) -> None:
+    def _on_derived_emit(self, value: _S) -> None:
         if self._predicate is None or self._predicate(value):
             self._emit_single_lazy(lambda: self._transformer(value))
 
@@ -704,7 +706,7 @@ class SplitOneInManyObservable(_DerivedFromOneObservableBase[Observer | ValuesOb
         super().__init__(derived_from, transformer, weakly, predicate)
 
     @override
-    def _on_derived_emit(self, value) -> None:
+    def _on_derived_emit(self, value: Any) -> None:
         predicate = self._predicate
         if predicate is None or predicate(value):
             self._emit_single_lazy(lambda: self._transformer(value))
@@ -758,15 +760,15 @@ class SplitTwoToThreeObservable(_DerivedFromOneObservableBase[Observer | ValueOb
 
 
 class _VoidSubscription(Subscription):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__(lambda: None, None, lambda silent: None)
 
     @override
-    def __call__(self, *args) -> None:
+    def __call__(self, *args: Any) -> None:
         pass  # pragma: no cover
 
     @override
-    def matches_observer(self, observer: Callable) -> bool:
+    def matches_observer(self, observer: Callable[..., Any]) -> bool:
         return False  # pragma: no cover
 
 
@@ -875,28 +877,28 @@ class _VoidValuesObservable(ValuesObservable[_S], Generic[_S]):
         return False  # pragma: no cover
 
 
-VOID_OBSERVABLE: Observable = _VoidObservable()
-VOID_VALUE_OBSERVABLE: ValueObservable = _VoidValueObservable()
-VOID_BI_OBSERVABLE: BiObservable = _VoidBiObservable()
-VOID_TRI_OBSERVABLE: TriObservable = _VoidTriObservable()
-VOID_VALUES_OBSERVABLE: ValuesObservable = _VoidValuesObservable()
+_VOID_OBSERVABLE: Observable = _VoidObservable()
+_VOID_VALUE_OBSERVABLE: ValueObservable[Any] = _VoidValueObservable()
+_VOID_BI_OBSERVABLE: BiObservable[Any, Any] = _VoidBiObservable()
+_VOID_TRI_OBSERVABLE: TriObservable[Any, Any, Any] = _VoidTriObservable()
+_VOID_VALUES_OBSERVABLE: ValuesObservable[Iterable[Any]] = _VoidValuesObservable()
 
 
 def void_observable() -> Observable:
-    return VOID_OBSERVABLE
+    return _VOID_OBSERVABLE
 
 
 def void_value_observable() -> ValueObservable[_S]:
-    return VOID_VALUE_OBSERVABLE
+    return _VOID_VALUE_OBSERVABLE
 
 
 def void_bi_observable() -> BiObservable[_S, _T]:
-    return VOID_BI_OBSERVABLE
+    return _VOID_BI_OBSERVABLE
 
 
 def void_tri_observable() -> TriObservable[_S, _T, _U]:
-    return VOID_TRI_OBSERVABLE
+    return _VOID_TRI_OBSERVABLE
 
 
 def void_values_observable() -> ValuesObservable[_S]:
-    return VOID_VALUES_OBSERVABLE
+    return _VOID_VALUES_OBSERVABLE  # type: ignore[return-value]

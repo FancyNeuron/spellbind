@@ -43,7 +43,7 @@ class IntValueCollection(ValueCollection[int], ABC):
 
 
 class CombinedIntValue(CombinedValue[int], IntValue):
-    def __init__(self, collection: ObservableCollection[_S], combiner: Callable[[Iterable[_S]], int]):
+    def __init__(self, collection: ObservableCollection[_S], combiner: Callable[[Iterable[_S]], int]) -> None:
         super().__init__(collection=collection, combiner=combiner)
 
 
@@ -60,7 +60,7 @@ class ReducedIntValue(ReducedValue[int], IntValue):
 
 
 class UnboxedIntValueSequence(UnboxedValueSequence[int], ObservableIntSequence):
-    def __init__(self, sequence: IntValueSequence):
+    def __init__(self, sequence: IntValueSequence) -> None:
         super().__init__(sequence)
 
 

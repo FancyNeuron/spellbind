@@ -11,7 +11,7 @@ from typing_extensions import TYPE_CHECKING
 from spellbind.bool_values import BoolValue
 from spellbind.functions import _clamp_float, _multiply_all_floats
 from spellbind.values import Value, SimpleVariable, OneToOneValue, DerivedValueBase, Constant, \
-    NotConstantError, ThreeToOneValue
+    NotConstantError, ThreeToOneValue, _create_value_getter, get_constant_of_generic_like
 
 if TYPE_CHECKING:
     from spellbind.int_values import IntValue, IntLike  # pragma: no cover
@@ -89,7 +89,7 @@ class FloatValue(Value[float], ABC):
             round_to_int_fun: Callable[[float], int] = round
             return IntValue.derive_from_one(round_to_int_fun, self)
         round_fun: Callable[[float, int], float] = round
-        return FloatValue.derive_from_two(round_fun, self, ndigits)
+        return FloatValue.derive_from_flot_and_int(round_fun, self, ndigits)
 
     def __lt__(self, other: FloatLike) -> BoolValue:
         return CompareNumbersValues(self, other, operator.lt)
@@ -112,7 +112,7 @@ class FloatValue(Value[float], ABC):
     def clamp(self, min_value: FloatLike, max_value: FloatLike) -> FloatValue:
         return FloatValue.derive_from_three_floats(_clamp_float, self, min_value, max_value)
 
-    def decompose_float_operands(self, operator_: Callable[[Sequence[float]], _S]) -> Sequence[FloatLike]:
+    def decompose_float_operands(self, operator_: Callable[..., float]) -> Sequence[FloatLike]:
         return (self,)
 
     @classmethod
@@ -125,25 +125,34 @@ class FloatValue(Value[float], ABC):
             return FloatConstant.of(transformer(constant_value))
 
     @classmethod
-    @overload
-    def derive_from_two(cls, operator_: Callable[[float, int], float], first: FloatLike, second: IntLike) -> FloatValue: ...
-
-    @classmethod
-    @overload
-    def derive_from_two(cls, operator_: Callable[[float, float], float], first: FloatLike, second: FloatLike) -> FloatValue: ...
-
-    @classmethod
-    def derive_from_two(cls, operator_, first, second) -> FloatValue:
+    def derive_from_flot_and_int(cls,
+                                 operator_: Callable[[float, int], float],
+                                 first: FloatLike,
+                                 second: IntLike) -> FloatValue:
         try:
             constant_first = _get_constant_float(first)
-            constant_second = _get_constant_float(second)
+            constant_second = get_constant_of_generic_like(second)
         except NotConstantError:
-            return TwoFloatsToFloatsValue(operator_, first, second)
+            return FloatAndIntToFloatValue(operator_, first, second)
         else:
             return FloatConstant.of(operator_(constant_first, constant_second))
 
     @classmethod
-    def derive_from_three_floats(cls, transformer: Callable[[float, float, float], float],
+    def derive_from_two(cls,
+                        operator_:  Callable[[float, float], float],
+                        first: FloatLike,
+                        second: FloatLike) -> FloatValue:
+        try:
+            constant_first = _get_constant_float(first)
+            constant_second = _get_constant_float(second)
+        except NotConstantError:
+            return TwoFloatsToFloatValue(operator_, first, second)
+        else:
+            return FloatConstant.of(operator_(constant_first, constant_second))
+
+    @classmethod
+    def derive_from_three_floats(cls,
+                                 transformer: Callable[[float, float, float], float],
                                  first: FloatLike, second: FloatLike, third: FloatLike) -> FloatValue:
         try:
             constant_first = _get_constant_float(first)
@@ -214,13 +223,13 @@ class FloatConstant(FloatValue, Constant[float]):
             return FloatConstant(value)
 
     @override
-    def __abs__(self):
+    def __abs__(self) -> FloatConstant:
         if self.value >= 0:
             return self
         return FloatConstant.of(-self.value)
 
     @override
-    def __neg__(self):
+    def __neg__(self) -> FloatConstant:
         return FloatConstant.of(-self.value)
 
 
@@ -241,7 +250,7 @@ def _create_float_getter(value: float | Value[int] | Value[float]) -> Callable[[
 
 
 class OneFloatToOneValue(DerivedValueBase[_S], Generic[_S]):
-    def __init__(self, transformer: Callable[[float], _S], of: FloatLike):
+    def __init__(self, transformer: Callable[[float], _S], of: FloatLike) -> None:
         self._of = of
         self._getter = _create_float_getter(of)
         self._transformer = transformer
@@ -267,7 +276,7 @@ def _get_constant_float(value: FloatLike) -> float:
     return value
 
 
-def _decompose_float_operands(operator_: Callable, value: FloatLike) -> Sequence[FloatLike]:
+def _decompose_float_operands(operator_: Callable[..., float], value: FloatLike) -> Sequence[FloatLike]:
     if isinstance(value, Value):
         if isinstance(value, FloatValue):
             return value.decompose_float_operands(operator_)
@@ -290,7 +299,7 @@ class ManyFloatsToOneValue(DerivedValueBase[_S], Generic[_S]):
 
 class ManyFloatsToFloatValue(ManyFloatsToOneValue[float], FloatValue):
     @override
-    def decompose_float_operands(self, operator_: Callable) -> Sequence[FloatLike]:
+    def decompose_float_operands(self, operator_: Callable[..., float]) -> Sequence[FloatLike]:
         if self._transformer == operator_:
             return self._input_values
         return (self,)
@@ -311,9 +320,32 @@ class TwoFloatsToOneValue(DerivedValueBase[_S], Generic[_S]):
         return self._transformer(self._first_getter(), self._second_getter())
 
 
-class TwoFloatsToFloatsValue(TwoFloatsToOneValue[float], FloatValue):
+class FloatAndIntToOneValue(DerivedValueBase[_S], Generic[_S]):
+    def __init__(self, transformer: Callable[[float, int], _S],
+                 first: FloatLike, second: IntLike):
+        self._transformer = transformer
+        self._of_first = first
+        self._of_second = second
+        self._first_getter = _create_float_getter(first)
+        self._second_getter = _create_value_getter(second)
+        super().__init__(*[v for v in (first, second) if isinstance(v, Value)])
+
     @override
-    def decompose_float_operands(self, operator_: Callable) -> Sequence[FloatLike]:
+    def _calculate_value(self) -> _S:
+        return self._transformer(self._first_getter(), self._second_getter())
+
+
+class TwoFloatsToFloatValue(TwoFloatsToOneValue[float], FloatValue):
+    @override
+    def decompose_float_operands(self, operator_: Callable[..., float]) -> Sequence[FloatLike]:
+        if self._transformer == operator_:
+            return self._of_first, self._of_second
+        return (self,)
+
+
+class FloatAndIntToFloatValue(FloatAndIntToOneValue[float], FloatValue, Generic[_S]):
+    @override
+    def decompose_float_operands(self, operator_: Callable[..., float]) -> Sequence[FloatLike]:
         if self._transformer == operator_:
             return self._of_first, self._of_second
         return (self,)
@@ -338,7 +370,7 @@ class ThreeFloatToOneValue(DerivedValueBase[_S], Generic[_S]):
 
 class ThreeFloatToFloatValue(ThreeFloatToOneValue[float], FloatValue):
     @override
-    def decompose_float_operands(self, operator_: Callable) -> Sequence[FloatLike]:
+    def decompose_float_operands(self, operator_: Callable[..., float]) -> Sequence[FloatLike]:
         if self._transformer == operator_:
             return self._of_first, self._of_second, self._of_third
         return (self,)
@@ -353,7 +385,7 @@ class ThreeToFloatValue(ThreeToOneValue[_S, _T, _U, float], FloatValue):
 
 
 class AbsFloatValue(OneFloatToOneValue[float], FloatValue):
-    def __init__(self, value: FloatLike):
+    def __init__(self, value: FloatLike) -> None:
         super().__init__(abs, value)
 
     @override
@@ -362,7 +394,7 @@ class AbsFloatValue(OneFloatToOneValue[float], FloatValue):
 
 
 class NegateFloatValue(OneFloatToFloatValue, FloatValue):
-    def __init__(self, value: FloatLike):
+    def __init__(self, value: FloatLike) -> None:
         super().__init__(operator.neg, value)
 
     @override
@@ -374,7 +406,7 @@ class NegateFloatValue(OneFloatToFloatValue, FloatValue):
 
 
 class CompareNumbersValues(TwoFloatsToOneValue[bool], BoolValue):
-    def __init__(self, left: FloatLike, right: FloatLike, op: Callable[[float, float], bool]):
+    def __init__(self, left: FloatLike, right: FloatLike, op: Callable[[float, float], bool]) -> None:
         super().__init__(op, left, right)
 
 

@@ -1,4 +1,4 @@
-from typing import Callable, TypeVar, Generic, Iterable, Sequence
+from typing import Callable, TypeVar, Generic, Iterable, Sequence, Any
 
 from typing_extensions import override
 
@@ -10,7 +10,7 @@ from spellbind.observables import Observable, ValueObservable, BiObservable, Tri
 _S = TypeVar("_S")
 _T = TypeVar("_T")
 _U = TypeVar("_U")
-_O = TypeVar('_O', bound=Callable)
+_O = TypeVar('_O', bound=Callable[..., Any])
 
 
 class Event(_BaseObservable[Observer], Observable, Emitter):
