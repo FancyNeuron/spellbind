@@ -1,12 +1,11 @@
 from __future__ import annotations
 
-from functools import cached_property
-
-from typing_extensions import TypeIs, Self, override
-
 from abc import ABC, abstractmethod
+from functools import cached_property
 from typing import Sequence, Generic, MutableSequence, Iterable, overload, SupportsIndex, Callable, Iterator, \
     TypeVar, Any
+
+from typing_extensions import TypeIs, Self, override
 
 from spellbind import int_values
 from spellbind.actions import AtIndicesDeltasAction, ClearAction, ReverseAction, OneElementChangedAction, \
@@ -19,7 +18,8 @@ from spellbind.actions import AtIndicesDeltasAction, ClearAction, ReverseAction,
 from spellbind.event import ValueEvent
 from spellbind.int_values import IntVariable, IntValue
 from spellbind.observable_collections import ObservableCollection, ValueCollection
-from spellbind.observables import ValueObservable, ValuesObservable, void_value_observable, void_values_observable
+from spellbind.observables import ValueObservable, ValuesObservable, void_value_observable, void_values_observable, \
+    combine_values_observables, combine_value_observables
 from spellbind.values import Value, NotConstantError, Constant
 
 _S = TypeVar("_S")
@@ -251,7 +251,7 @@ class IndexObservableSequenceBase(IndexObservableSequence[_S], Generic[_S]):
         self._values = list(iterable)
         self._action_event = ValueEvent[AtIndicesDeltasAction[_S] | ClearAction[_S] | ReverseAction[_S]]()
         self._deltas_event = ValueEvent[AtIndicesDeltasAction[_S]]()
-        self._delta_observable = self._deltas_event.map_to_many(
+        self._delta_observable = self._deltas_event.map_to_values_observable(
             transformer=lambda deltas_action: deltas_action.delta_actions
         )
         self._len_value = IntVariable(len(self._values))
@@ -558,15 +558,15 @@ class ValueSequenceBase(ValueSequence[_S], IndexObservableSequenceBase[Value[_S]
         super().__init__(iterable)
         self._cells = {}
 
-        self._on_value_action = self.on_change.map(lambda action: action.map(lambda item: item.value))
+        self._on_value_action = self.on_change.map_to_value_observable(lambda action: action.map(lambda item: item.value))
         self._on_value_changed_event = ValueEvent[ValueChangedMultipleTimesAction[_S]]()
-        self._final_on_value_action = self._on_value_action.or_value(self._on_value_changed_event)
+        self._final_on_value_action = combine_value_observables(self._on_value_action, self._on_value_changed_event)
 
         self._on_value_delta_action = self.delta_observable.map(lambda action: action.map(lambda item: item.value))
-        self._on_value_delta_action_event = self._on_value_changed_event.map_to_many(
+        self._on_value_delta_action_event = self._on_value_changed_event.map_to_values_observable(
             transformer=lambda deltas_action: deltas_action.delta_actions
         )
-        self._final_on_value_delta_action = self._on_value_delta_action.or_values(self._on_value_delta_action_event)
+        self._final_on_value_delta_action = combine_values_observables(self._on_value_delta_action, self._on_value_delta_action_event)
         self.delta_observable.observe_single(self._on_value_sequence_delta)
 
         for value in self:

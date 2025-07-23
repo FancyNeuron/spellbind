@@ -1,15 +1,15 @@
 from __future__ import annotations
 
-from typing_extensions import deprecated, override
-
 from abc import ABC, abstractmethod
 from contextlib import contextmanager
 from typing import TypeVar, Generic, Optional, Iterable, TYPE_CHECKING, Callable, Sequence, ContextManager, \
     Generator, Any
 
+from typing_extensions import deprecated, override
+
 from spellbind.deriveds import Derived
 from spellbind.event import BiEvent
-from spellbind.observables import Observer, ValueObserver, BiObservable, BiObserver, Subscription, void_bi_observable
+from spellbind.observables import Observer, ValueObserver, BiObservable, BiObserver, Subscription, VOID_SUBSCRIPTION
 
 if TYPE_CHECKING:
     from spellbind.str_values import StrValue  # pragma: no cover
@@ -38,28 +38,10 @@ class NotConstantError(Exception):
     pass
 
 
-class Value(Generic[_S], Derived, ABC):
+class Value(BiObservable[_S, _S], Derived, Generic[_S], ABC):
     @property
     @abstractmethod
     def value(self) -> _S: ...
-
-    @property
-    @abstractmethod
-    def observable(self) -> BiObservable[_S, _S]: ...
-
-    def observe(self, observer: Observer | ValueObserver[_S] | BiObserver[_S, _S],
-                times: int | None = None) -> Subscription:
-        return self.observable.observe(observer=observer, times=times)
-
-    def weak_observe(self, observer: Observer | ValueObserver[_S] | BiObserver[_S, _S],
-                     times: int | None = None) -> Subscription:
-        return self.observable.weak_observe(observer=observer, times=times)
-
-    def unobserve(self, observer: Observer | ValueObserver[_S] | BiObserver[_S, _S]) -> None:
-        self.observable.unobserve(observer=observer)
-
-    def is_observed(self, by: Callable[..., Any] | None = None) -> bool:
-        return self.observable.is_observed(by=by)
 
     def to_str(self) -> StrValue:
         from spellbind.str_values import ToStrValue
@@ -229,11 +211,6 @@ class SimpleVariable(Variable[_S], Generic[_S]):
             self._value = new_value
             self._on_change(new_value, old_value)
 
-    @property
-    @override
-    def observable(self) -> BiObservable[_S, _S]:
-        return self._on_change
-
     @override
     def bind(self, value: Value[_S], already_bound_ok: bool = False, bind_weakly: bool = True) -> None:
         if value is self:
@@ -274,6 +251,24 @@ class SimpleVariable(Variable[_S], Generic[_S]):
     def derived_from(self) -> frozenset[Value[_S]]:
         return self._bound_to_set
 
+    @override
+    def observe(self, observer: Observer | ValueObserver[_S] | BiObserver[_S, _S],
+                times: int | None = None) -> Subscription:
+        return self._on_change.observe(observer=observer, times=times)
+
+    @override
+    def weak_observe(self, observer: Observer | ValueObserver[_S] | BiObserver[_S, _S],
+                     times: int | None = None) -> Subscription:
+        return self._on_change.weak_observe(observer=observer, times=times)
+
+    @override
+    def unobserve(self, observer: Observer | ValueObserver[_S] | BiObserver[_S, _S]) -> None:
+        self._on_change.unobserve(observer=observer)
+
+    @override
+    def is_observed(self, by: Callable[..., Any] | None = None) -> bool:
+        return self._on_change.is_observed(by=by)
+
 
 class Constant(Value[_S], Generic[_S]):
     _value: _S
@@ -285,11 +280,6 @@ class Constant(Value[_S], Generic[_S]):
     @override
     def value(self) -> _S:
         return self._value
-
-    @property
-    @override
-    def observable(self) -> BiObservable[_S, _S]:
-        return void_bi_observable()
 
     @property
     @override
@@ -315,6 +305,24 @@ class Constant(Value[_S], Generic[_S]):
         return Constant(value)
 
     @override
+    def observe(self, observer: Observer | ValueObserver[_S] | BiObserver[_S, _S],
+                times: int | None = None) -> Subscription:
+        return VOID_SUBSCRIPTION
+
+    @override
+    def weak_observe(self, observer: Observer | ValueObserver[_S] | BiObserver[_S, _S],
+                     times: int | None = None) -> Subscription:
+        return VOID_SUBSCRIPTION
+
+    @override
+    def unobserve(self, observer: Observer | ValueObserver[_S] | BiObserver[_S, _S]) -> None:
+        pass
+
+    @override
+    def is_observed(self, by: Callable[..., Any] | None = None) -> bool:
+        return False
+
+    @override
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, Constant):
             return NotImplemented
@@ -336,11 +344,6 @@ class DerivedValueBase(Value[_S], Generic[_S], ABC):
 
     @property
     @override
-    def observable(self) -> BiObservable[_S, _S]:
-        return self._on_change
-
-    @property
-    @override
     def derived_from(self) -> frozenset[Derived]:
         return self._derived_from
 
@@ -358,6 +361,24 @@ class DerivedValueBase(Value[_S], Generic[_S], ABC):
     @override
     def value(self) -> _S:
         return self._value
+
+    @override
+    def observe(self, observer: Observer | ValueObserver[_S] | BiObserver[_S, _S],
+                times: int | None = None) -> Subscription:
+        return self._on_change.observe(observer=observer, times=times)
+
+    @override
+    def weak_observe(self, observer: Observer | ValueObserver[_S] | BiObserver[_S, _S],
+                     times: int | None = None) -> Subscription:
+        return self._on_change.weak_observe(observer=observer, times=times)
+
+    @override
+    def unobserve(self, observer: Observer | ValueObserver[_S] | BiObserver[_S, _S]) -> None:
+        self._on_change.unobserve(observer=observer)
+
+    @override
+    def is_observed(self, by: Callable[..., Any] | None = None) -> bool:
+        return self._on_change.is_observed(by=by)
 
 
 class OneToOneValue(DerivedValueBase[_T], Generic[_S, _T]):

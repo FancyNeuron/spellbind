@@ -195,7 +195,7 @@ class Observable(ABC):
     @abstractmethod
     def is_observed(self, by: _O | None = None) -> bool: ...
 
-    def __or__(self, other: Observable) -> Observable:
+    def or_observable(self, other: Observable) -> Observable:
         return CombinedObservable((self, other), weakly=True)
 
 
@@ -212,23 +212,23 @@ class ValueObservable(Observable, Generic[_S_co], ABC):
     @override
     def unobserve(self, observer: Observer | ValueObserver[_S_co]) -> None: ...
 
-    def map(self, transformer: Callable[[_S_co], _T], weakly: bool = False,
-            predicate: Callable[[_S_co], bool] | None = None) -> ValueObservable[_T]:
+    def map_to_value_observable(self, transformer: Callable[[_S_co], _T], weakly: bool = False,
+                                predicate: Callable[[_S_co], bool] | None = None) -> ValueObservable[_T]:
         return MappedValueObservable(self, transformer, weakly=weakly, predicate=predicate)
 
-    def map_to_two(self, transformer: Callable[[_S_co], tuple[_T, _U]], weakly: bool = False,
-                   predicate: Callable[[_S_co], bool] | None = None) -> BiObservable[_T, _U]:
+    def map_to_bi_observable(self, transformer: Callable[[_S_co], tuple[_T, _U]], weakly: bool = False,
+                             predicate: Callable[[_S_co], bool] | None = None) -> BiObservable[_T, _U]:
         return SplitOneInTwoObservable(self, transformer, weakly=weakly, predicate=predicate)
 
-    def map_to_three(self, transformer: Callable[[_S_co], tuple[_T, _U, _V]], weakly: bool = False,
-                     predicate: Callable[[_S_co], bool] | None = None) -> TriObservable[_T, _U, _V]:
+    def map_to_tri_observable(self, transformer: Callable[[_S_co], tuple[_T, _U, _V]], weakly: bool = False,
+                              predicate: Callable[[_S_co], bool] | None = None) -> TriObservable[_T, _U, _V]:
         return SplitOneInThreeObservable(self, transformer, weakly=weakly, predicate=predicate)
 
-    def map_to_many(self, transformer: Callable[[_S_co], tuple[_T, ...]], weakly: bool = False,
-                    predicate: Callable[[_S_co], bool] | None = None) -> ValuesObservable[_T]:
+    def map_to_values_observable(self, transformer: Callable[[_S_co], tuple[_T, ...]], weakly: bool = False,
+                                 predicate: Callable[[_S_co], bool] | None = None) -> ValuesObservable[_T]:
         return SplitOneInManyObservable(self, transformer, weakly=weakly, predicate=predicate)
 
-    def or_value(self, other: ValueObservable[_T]) -> ValueObservable[_S_co | _T]:
+    def or_value_observable(self, other: ValueObservable[_T]) -> ValueObservable[_S_co | _T]:
         return CombinedValueObservable((self, other), weakly=True)
 
 
@@ -247,20 +247,17 @@ class BiObservable(Observable, Generic[_S_co, _T_co], ABC):
     @override
     def unobserve(self, observer: Observer | ValueObserver[_S_co] | BiObserver[_S_co, _T_co]) -> None: ...
 
-    def map_to_one(self, transformer: Callable[[_S_co, _T_co], _U], weakly: bool = False,
-                   predicate: Callable[[_S_co, _T_co], bool] | None = None) -> ValueObservable[_U]:
+    def map_to_value_observable(self, transformer: Callable[[_S_co, _T_co], _U], weakly: bool = False,
+                                predicate: Callable[[_S_co, _T_co], bool] | None = None) -> ValueObservable[_U]:
         return MergeTwoToOneObservable(self, transformer, weakly=weakly, predicate=predicate)
 
-    def map(self, transformer: Callable[[_S_co, _T_co], tuple[_U, _V]], weakly: bool = False,
-            predicate: Callable[[_S_co, _T_co], bool] | None = None) -> BiObservable[_U, _V]:
+    def map_to_bi_observable(self, transformer: Callable[[_S_co, _T_co], tuple[_U, _V]], weakly: bool = False,
+                             predicate: Callable[[_S_co, _T_co], bool] | None = None) -> BiObservable[_U, _V]:
         return MappedBiObservable(self, transformer, weakly=weakly, predicate=predicate)
 
-    def map_to_three(self, transformer: Callable[[_S_co, _T_co], tuple[_U, _V, _W]], weakly: bool = False,
-                     predicate: Callable[[_S_co, _T_co], bool] | None = None) -> TriObservable[_U, _V, _W]:
+    def map_to_tri_observable(self, transformer: Callable[[_S_co, _T_co], tuple[_U, _V, _W]], weakly: bool = False,
+                              predicate: Callable[[_S_co, _T_co], bool] | None = None) -> TriObservable[_U, _V, _W]:
         return SplitTwoToThreeObservable(self, transformer, weakly=weakly, predicate=predicate)
-
-    def or_bi(self, other: BiObservable[_S_co, _T_co]) -> BiObservable[_S_co, _T_co]:
-        return CombinedBiObservable((self, other), weakly=True)
 
 
 class TriObservable(BiObservable[_S_co, _T_co], Generic[_S_co, _T_co, _U_co], ABC):
@@ -277,9 +274,6 @@ class TriObservable(BiObservable[_S_co, _T_co], Generic[_S_co, _T_co, _U_co], AB
     @abstractmethod
     @override
     def unobserve(self, observer: Observer | ValueObserver[_S_co] | BiObserver[_S_co, _T_co] | TriObserver[_S_co, _T_co, _U_co]) -> None: ...
-
-    def or_tri(self, other: TriObservable[_S_co, _T_co, _U_co]) -> TriObservable[_S_co, _T_co, _U_co]:
-        return CombinedTriObservable((self, other), weakly=True)
 
 
 class ValuesObservable(Observable, Generic[_S_co], ABC):
@@ -317,8 +311,25 @@ class ValuesObservable(Observable, Generic[_S_co], ABC):
             predicate: Callable[[_S_co], bool] | None = None) -> ValuesObservable[_T_co]:
         return MappedValuesObservable(self, transformer, weakly=weakly, predicate=predicate)
 
-    def or_values(self, other: ValuesObservable[_T]) -> ValuesObservable[_S_co | _T]:
-        return CombinedValuesObservable((self, other), weakly=True)
+
+def combine_observables(*observables: Observable, observe_weakly: bool = False) -> Observable:
+    return CombinedObservable(observables, weakly=observe_weakly)
+
+
+def combine_value_observables(*observables: ValueObservable[_S], observe_weakly: bool = False) -> ValueObservable[_S]:
+    return CombinedValueObservable(observables, weakly=observe_weakly)
+
+
+def combine_bi_observables(*observables: BiObservable[_S, _T], observe_weakly: bool = False) -> BiObservable[_S, _T]:
+    return CombinedBiObservable(observables, weakly=observe_weakly)
+
+
+def combine_tri_observables(*observables: TriObservable[_S, _T, _U], observe_weakly: bool = False) -> TriObservable[_S, _T, _U]:
+    return CombinedTriObservable(observables, weakly=observe_weakly)
+
+
+def combine_values_observables(*observables: ValuesObservable[_S], observe_weakly: bool = False) -> ValuesObservable[_S]:
+    return CombinedValuesObservable(observables, weakly=observe_weakly)
 
 
 class _BaseObservable(Generic[_O], ABC):

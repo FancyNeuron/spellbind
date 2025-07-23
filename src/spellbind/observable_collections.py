@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import functools
 from abc import ABC, abstractmethod
-from typing import TypeVar, Generic, Collection, Callable, Iterable, Iterator
+from typing import TypeVar, Generic, Collection, Callable, Iterable, Iterator, Any
 
 from typing_extensions import override
 
@@ -10,7 +10,8 @@ from spellbind.actions import CollectionAction, DeltaAction, DeltasAction, Clear
 from spellbind.deriveds import Derived
 from spellbind.event import BiEvent
 from spellbind.int_values import IntValue
-from spellbind.observables import ValuesObservable, ValueObservable, BiObservable
+from spellbind.observables import ValuesObservable, ValueObservable, Observer, ValueObserver, BiObserver, \
+    Subscription
 from spellbind.str_values import StrValue
 from spellbind.values import Value, EMPTY_FROZEN_SET
 
@@ -123,13 +124,26 @@ class ReducedValue(Value[_S], Generic[_S]):
 
     @property
     @override
-    def observable(self) -> BiObservable[_S, _S]:
-        return self._on_change
-
-    @property
-    @override
     def derived_from(self) -> frozenset[Derived]:
         return EMPTY_FROZEN_SET
+
+    @override
+    def observe(self, observer: Observer | ValueObserver[_S] | BiObserver[_S, _S],
+                times: int | None = None) -> Subscription:
+        return self._on_change.observe(observer, times=times)
+
+    @override
+    def weak_observe(self, observer: Observer | ValueObserver[_S] | BiObserver[_S, _S],
+                     times: int | None = None) -> Subscription:
+        return self._on_change.weak_observe(observer, times=times)
+
+    @override
+    def unobserve(self, observer: Observer | ValueObserver[_S] | BiObserver[_S, _S]) -> None:
+        self._on_change.unobserve(observer)
+
+    @override
+    def is_observed(self, by: Callable[..., Any] | None = None) -> bool:
+        return self._on_change.is_observed(by=by)
 
 
 class ValueCollection(ObservableCollection[Value[_S]], Generic[_S], ABC):
@@ -161,11 +175,6 @@ class CombinedValue(Value[_S], Generic[_S]):
         self._collection.on_change.observe(self._recalculate_value)
         self._on_change: BiEvent[_S, _S] = BiEvent[_S, _S]()
 
-    @property
-    @override
-    def observable(self) -> BiObservable[_S, _S]:
-        return self._on_change
-
     def _recalculate_value(self) -> None:
         old_value = self._value
         self._value = self._combiner(self._collection)
@@ -181,3 +190,21 @@ class CombinedValue(Value[_S], Generic[_S]):
     @override
     def derived_from(self) -> frozenset[Derived]:
         return EMPTY_FROZEN_SET
+
+    @override
+    def observe(self, observer: Observer | ValueObserver[_S] | BiObserver[_S, _S],
+                times: int | None = None) -> Subscription:
+        return self._on_change.observe(observer, times=times)
+
+    @override
+    def weak_observe(self, observer: Observer | ValueObserver[_S] | BiObserver[_S, _S],
+                     times: int | None = None) -> Subscription:
+        return self._on_change.weak_observe(observer, times=times)
+
+    @override
+    def unobserve(self, observer: Observer | ValueObserver[_S] | BiObserver[_S, _S]) -> None:
+        self._on_change.unobserve(observer)
+
+    @override
+    def is_observed(self, by: Callable[..., Any] | None = None) -> bool:
+        return self._on_change.is_observed(by=by)

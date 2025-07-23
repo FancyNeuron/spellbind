@@ -239,7 +239,7 @@ def test_value_event_lazy_evaluate_only_called_when_derived_observed():
     def lazy() -> int:
         lazy_calls.append("lazy")
         return 3
-    derived = event.map(lambda x: x + 1)
+    derived = event.map_to_value_observable(lambda x: x + 1)
     event.emit_lazy(lazy)
     assert lazy_calls == []
     derived.observe(void_observer)
