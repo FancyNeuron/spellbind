@@ -4,7 +4,7 @@ from spellbind.event import BiEvent
 
 def test_bi_event_merge():
     event = BiEvent[str, int]()
-    merged = event.map_to_one(lambda s, i: f"{s}-{i}")
+    merged = event.map_to_value_observable(lambda s, i: f"{s}-{i}")
     observer = OneParameterObserver()
     merged.observe(observer)
     event("foo", 1)
@@ -15,7 +15,7 @@ def test_bi_event_merge():
 
 def test_bi_event_merge_predicate():
     event = BiEvent[str, int]()
-    merged = event.map_to_one(lambda s, i: f"{s}-{i}", predicate=lambda s, i: i % 2 == 0)
+    merged = event.map_to_value_observable(lambda s, i: f"{s}-{i}", predicate=lambda s, i: i % 2 == 0)
     observer = OneParameterObserver()
     merged.observe(observer)
     event("foo", 1)
@@ -27,7 +27,7 @@ def test_bi_event_merge_predicate():
 
 def test_bi_event_map():
     event = BiEvent[str, int]()
-    mapped = event.map(lambda s, i: (s.upper(), i * 2))
+    mapped = event.map_to_bi_observable(lambda s, i: (s.upper(), i * 2))
     observer = TwoParametersObserver()
     mapped.observe(observer)
     event("foo", 1)
@@ -38,7 +38,7 @@ def test_bi_event_map():
 
 def test_bi_event_map_predicate():
     event = BiEvent[str, int]()
-    mapped = event.map(lambda s, i: (s.upper(), i * 2), predicate=lambda s, i: i % 2 == 0)
+    mapped = event.map_to_bi_observable(lambda s, i: (s.upper(), i * 2), predicate=lambda s, i: i % 2 == 0)
     observer = TwoParametersObserver()
     mapped.observe(observer)
     event("foo", 1)
@@ -50,7 +50,7 @@ def test_bi_event_map_predicate():
 
 def test_bi_event_split_to_three():
     event = BiEvent[str, int]()
-    split = event.map_to_three(lambda s, i: (s[0], s[1:], i))
+    split = event.map_to_tri_observable(lambda s, i: (s[0], s[1:], i))
     observer = ThreeParametersObserver()
     split.observe(observer)
     event("foo", 1)
@@ -61,7 +61,7 @@ def test_bi_event_split_to_three():
 
 def test_bi_event_split_to_three_predicate():
     event = BiEvent[str, int]()
-    split = event.map_to_three(
+    split = event.map_to_tri_observable(
         lambda s, i: (s[0], s[1:], i),
         predicate=lambda s, i: len(s) > 2
     )
@@ -84,7 +84,7 @@ def test_bi_event_called_only_after_observed():
         transform_calls.append((s, i))
         return f"{s}-{i}"
 
-    merged_event = event.map_to_one(transform)
+    merged_event = event.map_to_value_observable(transform)
     event("foo", 1)
     assert transform_calls == []
     assert event_observer.calls == [("foo", 1)]
@@ -101,7 +101,7 @@ def test_bi_event_called_only_after_observed():
 def test_unobserve_derived_bi_event():
     event = BiEvent[str, int]()
     observer = OneParameterObserver()
-    merged_event = event.map_to_one(lambda s, i: f"{s}-{i}")
+    merged_event = event.map_to_value_observable(lambda s, i: f"{s}-{i}")
     merged_event.observe(observer)
     assert event.is_observed()
 
@@ -124,8 +124,8 @@ def test_bi_event_chained_transformations():
         merge_calls.append((s, i))
         return f"{s}:{i}"
 
-    mapped = event.map(map_fn)
-    merged = mapped.map_to_one(merge_fn)
+    mapped = event.map_to_bi_observable(map_fn)
+    merged = mapped.map_to_value_observable(merge_fn)
 
     observer = OneParameterObserver()
     merged.observe(observer)

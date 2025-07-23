@@ -4,7 +4,7 @@ from spellbind.event import ValueEvent
 
 def test_derive_one():
     event = ValueEvent[str]()
-    derived = event.map(lambda s: len(s))
+    derived = event.map_to_value_observable(lambda s: len(s))
     observer = OneParameterObserver()
     derived.observe(observer)
     event("foo bar")
@@ -15,7 +15,7 @@ def test_derive_one():
 
 def test_derive_one_predicate():
     event = ValueEvent[str]()
-    derived = event.map(lambda s: len(s), predicate=lambda s: len(s) % 2 == 0)
+    derived = event.map_to_value_observable(lambda s: len(s), predicate=lambda s: len(s) % 2 == 0)
     observer = OneParameterObserver()
     derived.observe(observer)
     event("foo bar")
@@ -28,7 +28,7 @@ def test_derive_one_predicate():
 
 def test_derive_two():
     event = ValueEvent[str]()
-    derived = event.map_to_two(lambda s: (s[0:len(s) // 2], s[len(s) // 2:]))
+    derived = event.map_to_bi_observable(lambda s: (s[0:len(s) // 2], s[len(s) // 2:]))
     observer = TwoParametersObserver()
     derived.observe(observer)
     event("f")
@@ -40,7 +40,7 @@ def test_derive_two():
 
 def test_derive_two_predicate():
     event = ValueEvent[str]()
-    derived = event.map_to_two(lambda s: (s[0:len(s) // 2], s[len(s) // 2:]), predicate=lambda s: len(s) % 2 == 0)
+    derived = event.map_to_bi_observable(lambda s: (s[0:len(s) // 2], s[len(s) // 2:]), predicate=lambda s: len(s) % 2 == 0)
     observer = TwoParametersObserver()
     derived.observe(observer)
     event("f")
@@ -52,7 +52,7 @@ def test_derive_two_predicate():
 
 def test_derive_three():
     event = ValueEvent[str]()
-    derived = event.map_to_three(lambda s: (s[0:len(s) // 3], s[len(s) // 3:2 * len(s) // 3], s[2 * len(s) // 3:]))
+    derived = event.map_to_tri_observable(lambda s: (s[0:len(s) // 3], s[len(s) // 3:2 * len(s) // 3], s[2 * len(s) // 3:]))
     observer = ThreeParametersObserver()
     derived.observe(observer)
     event("foobar")
@@ -63,8 +63,8 @@ def test_derive_three():
 
 def test_derive_three_predicate():
     event = ValueEvent[str]()
-    derived = event.map_to_three(lambda s: (s[0:len(s) // 3], s[len(s) // 3:2 * len(s) // 3], s[2 * len(s) // 3:]),
-                                 predicate=lambda s: len(s) % 3 == 0)
+    derived = event.map_to_tri_observable(lambda s: (s[0:len(s) // 3], s[len(s) // 3:2 * len(s) // 3], s[2 * len(s) // 3:]),
+                                          predicate=lambda s: len(s) % 3 == 0)
     observer = ThreeParametersObserver()
     derived.observe(observer)
     event("foobar")
@@ -77,7 +77,7 @@ def test_derive_three_predicate():
 
 def test_derive_many():
     event = ValueEvent[str]()
-    derived = event.map_to_many(lambda s: s.split())
+    derived = event.map_to_values_observable(lambda s: s.split())
     observer = OneParameterObserver()
     derived.observe(observer)
     event("foobar")
@@ -94,7 +94,7 @@ def test_derive_many():
 
 def test_derive_many_predicate():
     event = ValueEvent[str]()
-    derived = event.map_to_many(lambda s: s.split(), predicate=lambda s: " " in s)
+    derived = event.map_to_values_observable(lambda s: s.split(), predicate=lambda s: " " in s)
     observer = OneParameterObserver()
     derived.observe(observer)
     event("x")
@@ -120,7 +120,7 @@ def test_value_event_called_only_after_derived_observed():
         plus_one_calls.append(value)
         return value + 1
 
-    derived_event = event.map(plus_one)
+    derived_event = event.map_to_value_observable(plus_one)
     event(3)
     assert plus_one_calls == []
     assert event_observer.calls == [3]
@@ -149,8 +149,8 @@ def test_value_event_called_only_after_derived_twice_observed():
         times_two_calls.append(value)
         return value * 2
 
-    derived_1 = event.map(plus_one)
-    derived_2 = derived_1.map(times_two)
+    derived_1 = event.map_to_value_observable(plus_one)
+    derived_2 = derived_1.map_to_value_observable(times_two)
     event(3)
     assert plus_one_calls == []
     assert times_two_calls == []
@@ -166,7 +166,7 @@ def test_value_event_called_only_after_derived_twice_observed():
 def test_unobserve_derived_event_silences_makes_event_unobserved():
     event = ValueEvent[int]()
     observer = OneParameterObserver()
-    derived_event = event.map(lambda x: x + 1)
+    derived_event = event.map_to_value_observable(lambda x: x + 1)
     derived_event.observe(observer)
     assert event.is_observed()
 
