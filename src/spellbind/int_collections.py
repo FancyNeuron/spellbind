@@ -3,15 +3,18 @@ from __future__ import annotations
 import operator
 from abc import ABC, abstractmethod
 from functools import cached_property
-from typing import Iterable, Callable, Any
+from typing import Iterable, Callable, Any, TypeVar
 
 from typing_extensions import TypeIs, override
 
 from spellbind.int_values import IntValue, IntConstant
 from spellbind.observable_collections import ObservableCollection, ReducedValue, CombinedValue, ValueCollection
-from spellbind.observable_sequences import ObservableList, _S, TypedValueList, ValueSequence, UnboxedValueSequence, \
+from spellbind.observable_sequences import ObservableList, TypedValueList, ValueSequence, UnboxedValueSequence, \
     ObservableSequence
 from spellbind.values import Value
+
+
+_S = TypeVar("_S")
 
 
 class ObservableIntCollection(ObservableCollection[int], ABC):

@@ -9,7 +9,7 @@ from typing_extensions import Self, TypeVar, override
 from spellbind.bool_values import BoolValue
 from spellbind.float_values import FloatValue, \
     CompareNumbersValues
-from spellbind.functions import _clamp_int, _multiply_all_ints, _multiply_all_floats
+from spellbind.numbers import multiply_all_ints, multiply_all_floats, clamp_int
 from spellbind.values import Value, SimpleVariable, TwoToOneValue, OneToOneValue, Constant, \
     ThreeToOneValue, NotConstantError, ManyToSameValue, get_constant_of_generic_like
 
@@ -75,8 +75,8 @@ class IntValue(Value[int], ABC):
 
     def __mul__(self, other: FloatLike) -> IntValue | FloatValue:
         if isinstance(other, (float, FloatValue)):
-            return FloatValue.derive_from_many(_multiply_all_floats, self, other, is_associative=True)
-        return IntValue.derive_from_many(_multiply_all_ints, self, other, is_associative=True)
+            return FloatValue.derive_from_many(multiply_all_floats, self, other, is_associative=True)
+        return IntValue.derive_from_many(multiply_all_ints, self, other, is_associative=True)
 
     @overload
     def __rmul__(self, other: int) -> IntValue: ...
@@ -86,8 +86,8 @@ class IntValue(Value[int], ABC):
 
     def __rmul__(self, other: int | float) -> IntValue | FloatValue:
         if isinstance(other, float):
-            return FloatValue.derive_from_many(_multiply_all_floats, other, self, is_associative=True)
-        return IntValue.derive_from_many(_multiply_all_ints, other, self, is_associative=True)
+            return FloatValue.derive_from_many(multiply_all_floats, other, self, is_associative=True)
+        return IntValue.derive_from_many(multiply_all_ints, other, self, is_associative=True)
 
     def __truediv__(self, other: FloatLike) -> FloatValue:
         return FloatValue.derive_from_two(operator.truediv, self, other)
@@ -135,7 +135,7 @@ class IntValue(Value[int], ABC):
         return self
 
     def clamp(self, min_value: IntLike, max_value: IntLike) -> IntValue:
-        return IntValue.derive_from_three(_clamp_int, self, min_value, max_value)
+        return IntValue.derive_from_three(clamp_int, self, min_value, max_value)
 
     @classmethod
     def derive_from_one(cls, operator_: Callable[[_S], int], value: _S | Value[_S]) -> IntValue:
