@@ -9,9 +9,9 @@ from typing_extensions import Self, override
 from typing_extensions import TYPE_CHECKING
 
 from spellbind.bool_values import BoolValue
-from spellbind.functions import _clamp_float, _multiply_all_floats
+from spellbind.numbers import multiply_all_floats, clamp_float
 from spellbind.values import Value, SimpleVariable, OneToOneValue, DerivedValueBase, Constant, \
-    NotConstantError, ThreeToOneValue, _create_value_getter, get_constant_of_generic_like
+    NotConstantError, ThreeToOneValue, create_value_getter, get_constant_of_generic_like
 
 if TYPE_CHECKING:
     from spellbind.int_values import IntValue, IntLike  # pragma: no cover
@@ -41,10 +41,10 @@ class FloatValue(Value[float], ABC):
         return FloatValue.derive_from_two(operator.sub, other, self)
 
     def __mul__(self, other: FloatLike) -> FloatValue:
-        return FloatValue.derive_from_many(_multiply_all_floats, self, other, is_associative=True)
+        return FloatValue.derive_from_many(multiply_all_floats, self, other, is_associative=True)
 
     def __rmul__(self, other: int | float) -> FloatValue:
-        return FloatValue.derive_from_many(_multiply_all_floats, other, self, is_associative=True)
+        return FloatValue.derive_from_many(multiply_all_floats, other, self, is_associative=True)
 
     def __truediv__(self, other: FloatLike) -> FloatValue:
         return FloatValue.derive_from_two(operator.truediv, self, other)
@@ -110,7 +110,7 @@ class FloatValue(Value[float], ABC):
         return self
 
     def clamp(self, min_value: FloatLike, max_value: FloatLike) -> FloatValue:
-        return FloatValue.derive_from_three_floats(_clamp_float, self, min_value, max_value)
+        return FloatValue.derive_from_three_floats(clamp_float, self, min_value, max_value)
 
     def decompose_float_operands(self, operator_: Callable[..., float]) -> Sequence[FloatLike]:
         return (self,)
@@ -204,7 +204,7 @@ def sum_floats(*values: FloatLike) -> FloatValue:
 
 
 def multiply_floats(*values: FloatLike) -> FloatValue:
-    return FloatValue.derive_from_many(_multiply_all_floats, *values, is_associative=True)
+    return FloatValue.derive_from_many(multiply_all_floats, *values, is_associative=True)
 
 
 class OneToFloatValue(Generic[_S], OneToOneValue[_S, float], FloatValue):
@@ -327,7 +327,7 @@ class FloatAndIntToOneValue(DerivedValueBase[_S], Generic[_S]):
         self._of_first = first
         self._of_second = second
         self._first_getter = _create_float_getter(first)
-        self._second_getter = _create_value_getter(second)
+        self._second_getter = create_value_getter(second)
         super().__init__(*[v for v in (first, second) if isinstance(v, Value)])
 
     @override

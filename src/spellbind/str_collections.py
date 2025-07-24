@@ -1,13 +1,16 @@
 from abc import ABC
-from typing import Iterable, Callable, Any
+from typing import Iterable, Callable, Any, TypeVar
 
 from typing_extensions import TypeIs
 
 from spellbind.int_values import IntValue
 from spellbind.observable_collections import ObservableCollection, ReducedValue, CombinedValue
-from spellbind.observable_sequences import ObservableList, _S, TypedValueList
+from spellbind.observable_sequences import ObservableList, TypedValueList
 from spellbind.str_values import StrValue, StrConstant
 from spellbind.values import Value
+
+
+_S = TypeVar("_S")
 
 
 class ObservableStrCollection(ObservableCollection[str], ABC):

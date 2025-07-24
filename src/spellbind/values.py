@@ -27,7 +27,7 @@ _V = TypeVar("_V")
 _W = TypeVar("_W")
 
 
-def _create_value_getter(value: Value[_S] | _S) -> Callable[[], _S]:
+def create_value_getter(value: Value[_S] | _S) -> Callable[[], _S]:
     if isinstance(value, Value):
         return lambda: value.value
     else:
@@ -385,7 +385,7 @@ class OneToOneValue(DerivedValueBase[_T], Generic[_S, _T]):
     _getter: Callable[[], _S]
 
     def __init__(self, transformer: Callable[[_S], _T], of: Value[_S]) -> None:
-        self._getter = _create_value_getter(of)
+        self._getter = create_value_getter(of)
         self._of = of
         self._transformer = transformer
         super().__init__(*[v for v in (of,) if isinstance(v, Value)])
@@ -398,7 +398,7 @@ class OneToOneValue(DerivedValueBase[_T], Generic[_S, _T]):
 class ManyToOneValue(DerivedValueBase[_T], Generic[_S, _T]):
     def __init__(self, transformer: Callable[[Iterable[_S]], _T], *values: _S | Value[_S]):
         self._input_values = tuple(values)
-        self._value_getters = [_create_value_getter(v) for v in self._input_values]
+        self._value_getters = [create_value_getter(v) for v in self._input_values]
         self._transformer = transformer
         super().__init__(*[v for v in self._input_values if isinstance(v, Value)])
 
@@ -422,8 +422,8 @@ class TwoToOneValue(DerivedValueBase[_U], Generic[_S, _T, _U]):
         self._transformer = transformer
         self._of_first = first
         self._of_second = second
-        self._first_getter = _create_value_getter(first)
-        self._second_getter = _create_value_getter(second)
+        self._first_getter = create_value_getter(first)
+        self._second_getter = create_value_getter(second)
         super().__init__(*[v for v in (first, second) if isinstance(v, Value)])
 
     @override
@@ -438,9 +438,9 @@ class ThreeToOneValue(DerivedValueBase[_V], Generic[_S, _T, _U, _V]):
         self._of_first = first
         self._of_second = second
         self._of_third = third
-        self._first_getter = _create_value_getter(first)
-        self._second_getter = _create_value_getter(second)
-        self._third_getter = _create_value_getter(third)
+        self._first_getter = create_value_getter(first)
+        self._second_getter = create_value_getter(second)
+        self._third_getter = create_value_getter(third)
         super().__init__(*[v for v in (first, second, third) if isinstance(v, Value)])
 
     @override

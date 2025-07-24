@@ -1,5 +1,7 @@
+import ast
 from contextlib import contextmanager
-from typing import Any, Sequence, Callable
+from pathlib import Path
+from typing import Any, Sequence, Callable, Generator, Tuple
 from typing import Iterable, overload, Collection
 from unittest.mock import Mock
 
@@ -11,6 +13,54 @@ from spellbind.observable_collections import ObservableCollection
 from spellbind.observable_sequences import ObservableSequence, ValueSequence
 
 _S = TypeVar("_S")
+
+
+PROJECT_ROOT_PATH = Path(__file__).parent.parent.resolve()
+SOURCE_PATH = PROJECT_ROOT_PATH / "src"
+
+
+def iter_python_files(source_path: Path) -> Generator[Path, None, None]:
+    yield from source_path.rglob("*.py")
+
+
+def is_class_definition(module_path: Path, object_name: str) -> bool:
+    text = module_path.read_text(encoding="utf-8")
+    node = ast.parse(text, filename=str(module_path))
+    for item in node.body:
+        if hasattr(item, "name") and getattr(item, "name") == object_name:
+            if isinstance(item, ast.ClassDef):
+                return True
+            else:
+                return False
+    return False
+
+
+def resolve_module_path(base_path: Path, module: str) -> Path:
+    unfinished_module_path = base_path / Path(*module.split("."))
+    init_path = unfinished_module_path / "__init__.py"
+    if init_path.exists():
+        return init_path
+    file_path = unfinished_module_path.with_suffix(".py")
+    return file_path
+
+
+def is_class_import(alias: ast.alias, import_: ast.ImportFrom, source_root: Path = SOURCE_PATH) -> bool:
+    module = import_.module
+    if module is None:
+        return False
+    module_path = resolve_module_path(source_root, module)
+    if module_path is None:
+        return False
+    return is_class_definition(module_path, alias.name)
+
+
+def iter_imported_aliases(file_path: Path) -> Generator[Tuple[ast.alias, ast.ImportFrom], None, None]:
+    text = file_path.read_text(encoding="utf-8")
+    node = ast.parse(text, filename=str(file_path))
+    for statement in ast.walk(node):
+        if isinstance(statement, ast.ImportFrom):
+            for alias_ in statement.names:
+                yield alias_, statement
 
 
 class Call:
