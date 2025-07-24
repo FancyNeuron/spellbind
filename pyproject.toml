@@ -30,11 +30,10 @@ classifiers = [
     "Typing :: Typed",
 ]
 
-[project.urls]
-Homepage = "https://github.com/FancyNeuron/spellbind"
-Repository = "https://github.com/FancyNeuron/spellbind"
-Issues = "https://github.com/FancyNeuron/spellbind/issues"
-Documentation = "https://github.com/FancyNeuron/spellbind#readme"
+dependencies = [
+    # type extensions uses semantic versioning: https://semver.org/
+    "typing_extensions >=4.13, <5"
+]
 
 [project.optional-dependencies]
 testing = [
@@ -43,8 +42,13 @@ testing = [
     "flake8",
     "mypy",
     "setuptools_scm",
-    "typing_extensions"
 ]
+
+[project.urls]
+Homepage = "https://github.com/FancyNeuron/spellbind"
+Repository = "https://github.com/FancyNeuron/spellbind"
+Issues = "https://github.com/FancyNeuron/spellbind/issues"
+Documentation = "https://github.com/FancyNeuron/spellbind#readme"
 
 [tool.mypy]
 enable_error_code = "explicit-override"
