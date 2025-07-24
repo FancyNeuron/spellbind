@@ -3,7 +3,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from functools import cached_property
 from typing import Sequence, Generic, MutableSequence, Iterable, overload, SupportsIndex, Callable, Iterator, \
-    TypeVar, Any
+    TypeVar, Any, Hashable
 
 from typing_extensions import TypeIs, Self, override
 
@@ -16,7 +16,7 @@ from spellbind.actions import AtIndicesDeltasAction, ClearAction, ReverseAction,
     clear_action, DeltaAction, SimpleRemoveOneAction, SimpleAddOneAction, ElementsChangedAction, \
     SimpleOneElementChangedAction
 from spellbind.event import ValueEvent
-from spellbind.int_values import IntVariable, IntValue
+from spellbind.int_values import IntVariable, IntValue, IntConstant
 from spellbind.observable_collections import ObservableCollection, ValueCollection
 from spellbind.observables import ValueObservable, ValuesObservable, void_value_observable, void_values_observable, \
     combine_values_observables, combine_value_observables
@@ -25,6 +25,7 @@ from spellbind.values import Value, NotConstantError, Constant
 _S = TypeVar("_S")
 _S_co = TypeVar("_S_co", covariant=True)
 _T = TypeVar("_T")
+_H = TypeVar("_H", bound=Hashable)
 
 
 class ObservableSequence(Sequence[_S_co], ObservableCollection[_S_co], Generic[_S_co], ABC):
@@ -971,6 +972,76 @@ class _EmptyObservableSequence(IndexObservableSequence[_S], Generic[_S]):
     @override
     def __str__(self) -> str:
         return "[]"
+
+
+class StaticObservableSequence(IndexObservableSequence[_S], Generic[_S]):
+    _on_change: ValueObservable[AtIndicesDeltasAction[_S] | ClearAction[_S] | ReverseAction[_S]]
+    _delta_observable: ValuesObservable[AtIndexDeltaAction[_S]]
+
+    def __init__(self, iterable: Iterable[_S] = ()) -> None:
+        self._sequence = tuple(iterable)
+        self._on_change = void_value_observable()
+        self._delta_observable = void_values_observable()
+        self._length_value = IntConstant.of(len(self._sequence))
+
+    @property
+    @override
+    def on_change(self) -> ValueObservable[AtIndicesDeltasAction[_S] | ClearAction[_S] | ReverseAction[_S]]:
+        return self._on_change
+
+    @property
+    @override
+    def delta_observable(self) -> ValuesObservable[AtIndexDeltaAction[_S]]:
+        return self._delta_observable
+
+    @property
+    @override
+    def length_value(self) -> IntValue:
+        return self._length_value
+
+    @overload
+    @override
+    def __getitem__(self, index: int) -> _S: ...
+
+    @overload
+    @override
+    def __getitem__(self, index: slice) -> Sequence[_S]: ...
+
+    @override
+    def __getitem__(self, index: int | slice) -> _S | Sequence[_S]:
+        return self._sequence[index]
+
+    @override
+    def __iter__(self) -> Iterator[_S]:
+        return iter(self._sequence)
+
+    @override
+    def __len__(self) -> int:
+        return len(self._sequence)
+
+    @override
+    def __str__(self) -> str:
+        return "[" + ", ".join(repr(item) for item in self._sequence) + "]"
+
+    @override
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}({self._sequence!r})"
+
+    @override
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, FrozenObservableSequence):
+            return self._sequence == other._sequence
+        return super().__eq__(other)
+
+
+class FrozenObservableSequence(StaticObservableSequence[_H], Generic[_H]):
+    def __init__(self, iterable: Iterable[_H] = ()) -> None:
+        super().__init__(iterable)
+        self._hash = hash(self._sequence)  # ensure fast-fail for non hashable elements, like frozenset does
+
+    @override
+    def __hash__(self) -> int:
+        return self._hash
 
 
 EMPTY_SEQUENCE: IndexObservableSequence[Any] = _EmptyObservableSequence()
