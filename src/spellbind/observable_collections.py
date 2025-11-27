@@ -7,6 +7,7 @@ from typing import TypeVar, Generic, Collection, Callable, Iterable, Iterator, A
 from typing_extensions import override
 
 from spellbind.actions import CollectionAction, DeltaAction, DeltasAction, ClearAction
+from spellbind.bool_values import BoolValue
 from spellbind.deriveds import Derived
 from spellbind.event import BiEvent
 from spellbind.int_values import IntValue
@@ -36,6 +37,10 @@ class ObservableCollection(Collection[_S_co], Generic[_S_co], ABC):
     @override
     def __len__(self) -> int:
         return self.length_value.value
+
+    @property
+    def is_empty(self) -> BoolValue:
+        return self.length_value.equals(0)
 
     def combine(self, combiner: Callable[[Iterable[_S_co]], _S]) -> Value[_S]:
         return CombinedValue(self, combiner=combiner)

@@ -116,6 +116,9 @@ class IntValue(Value[int], ABC):
     def __abs__(self) -> IntValue:
         return AbsIntValue(self)
 
+    def equals(self, other: FloatLike) -> BoolValue:
+        return CompareNumbersValues(self, other, operator.eq)
+
     def __lt__(self, other: FloatLike) -> BoolValue:
         return CompareNumbersValues(self, other, operator.lt)
 
