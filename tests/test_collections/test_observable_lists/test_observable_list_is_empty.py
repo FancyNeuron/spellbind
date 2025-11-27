@@ -1,5 +1,5 @@
 from conftest import OneParameterObserver
-from spellbind.observable_sequences import ObservableList, SimpleValueChangedMultipleTimesAction
+from spellbind.observable_sequences import ObservableList
 
 
 def test_empty_is_empty():

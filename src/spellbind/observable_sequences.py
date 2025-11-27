@@ -752,7 +752,7 @@ def _to_value(value: _S | Value[_S],
     if checker(value):
         return constant_factory(value)
     else:
-        return value
+        return value  # type: ignore[return-value]  # mypy raises an error since mypy 1.18.1, but that seems to be a bug https://github.com/python/mypy/issues/20330
 
 
 def _to_values(values: Iterable[_S | Value[_S]],
