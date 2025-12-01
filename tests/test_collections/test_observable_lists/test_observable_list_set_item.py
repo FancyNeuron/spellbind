@@ -2,8 +2,8 @@ import pytest
 
 from conftest import ValueSequenceObservers, values_factories
 from spellbind.actions import SimpleSliceSetAction, SimpleSetAtIndicesAction, SimpleSetAtIndexAction
-from spellbind.observable_sequences import ObservableList
 from spellbind.int_collections import ObservableIntList, IntValueList
+from spellbind.observable_sequences import ObservableList
 
 
 @pytest.mark.parametrize("constructor", [ObservableList, ObservableIntList, IntValueList])
@@ -31,6 +31,7 @@ def test_observable_list_set_item_notifies(constructor):
     assert observable_list == [1, 4, 3]
     assert observable_list.length_value.value == 3
     observers.assert_calls((1, 2, False), (1, 4, True))
+    observers.assert_single_action(SimpleSetAtIndexAction(index=1, old_item=2, new_item=4))
 
 
 @pytest.mark.parametrize("constructor", [ObservableList, ObservableIntList, IntValueList])
