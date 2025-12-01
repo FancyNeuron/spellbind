@@ -19,6 +19,9 @@ class CollectionAction(Generic[_S_co], ABC):
     @abstractmethod
     def map(self, transformer: Callable[[_S_co], _T]) -> CollectionAction[_T]: ...
 
+    @abstractmethod
+    def filter(self, predicate: Callable[[_S_co], bool]) -> CollectionAction[_S_co] | None: ...
+
     @override
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}()"
@@ -33,6 +36,10 @@ class ClearAction(CollectionAction[_S_co], Generic[_S_co]):
     @override
     def map(self, transformer: Callable[[_S_co], _T]) -> ClearAction[_T]:
         return clear_action()
+
+    @override
+    def filter(self, predicate: Callable[[_S_co], bool]) -> ClearAction[_S_co]:
+        return self
 
 
 class SingleValueAction(CollectionAction[_S_co], Generic[_S_co]):
@@ -55,6 +62,13 @@ class DeltasAction(CollectionAction[_S_co], Generic[_S_co], ABC):
     def map(self, transformer: Callable[[_S_co], _T]) -> DeltasAction[_T]:
         mapped = tuple(action.map(transformer) for action in self.delta_actions)
         return SimpleDeltasAction(mapped)
+
+    @override
+    def filter(self, predicate: Callable[[_S_co], bool]) -> DeltasAction[_S_co] | None:
+        filtered_actions = tuple(action for action in self.delta_actions if predicate(action.value))
+        if not filtered_actions:
+            return None
+        return SimpleDeltasAction(filtered_actions)
 
 
 class SimpleDeltasAction(DeltasAction[_S_co], Generic[_S_co]):
@@ -86,6 +100,10 @@ class DeltaAction(SingleValueAction[_S_co], DeltasAction[_S_co], Generic[_S_co],
     @override
     def map(self, transformer: Callable[[_S_co], _T]) -> DeltaAction[_T]: ...
 
+    @abstractmethod
+    @override
+    def filter(self, predicate: Callable[[_S_co], bool]) -> DeltaAction[_S_co] | None: ...
+
 
 class AddOneAction(DeltaAction[_S_co], Generic[_S_co], ABC):
     @property
@@ -96,6 +114,12 @@ class AddOneAction(DeltaAction[_S_co], Generic[_S_co], ABC):
     @override
     def map(self, transformer: Callable[[_S_co], _T]) -> AddOneAction[_T]:
         return SimpleAddOneAction(transformer(self.value))
+
+    @override
+    def filter(self, predicate: Callable[[_S_co], bool]) -> AddOneAction[_S_co] | None:
+        if predicate(self.value):
+            return SimpleAddOneAction(self.value)
+        return None
 
     @override
     def __repr__(self) -> str:
@@ -111,6 +135,12 @@ class SimpleAddOneAction(AddOneAction[_S_co], Generic[_S_co]):
     def value(self) -> _S_co:
         return self._item
 
+    @override
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, AddOneAction):
+            return NotImplemented
+        return bool(self.value == other.value)
+
 
 class RemoveOneAction(DeltaAction[_S_co], Generic[_S_co], ABC):
     @property
@@ -121,6 +151,12 @@ class RemoveOneAction(DeltaAction[_S_co], Generic[_S_co], ABC):
     @override
     def map(self, transformer: Callable[[_S_co], _T]) -> RemoveOneAction[_T]:
         return SimpleRemoveOneAction(transformer(self.value))
+
+    @override
+    def filter(self, predicate: Callable[[_S_co], bool]) -> RemoveOneAction[_S_co] | None:
+        if predicate(self.value):
+            return SimpleRemoveOneAction(self.value)
+        return None
 
     @override
     def __repr__(self) -> str:
@@ -135,6 +171,32 @@ class SimpleRemoveOneAction(RemoveOneAction[_S_co], Generic[_S_co]):
     @override
     def value(self) -> _S_co:
         return self._item
+
+    @override
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, RemoveOneAction):
+            return NotImplemented
+        return bool(self.value == other.value)
+
+
+class SimpleRemoveAllAction(DeltasAction[_S_co], Generic[_S_co]):
+    def __init__(self, items: tuple[_S_co, ...]):
+        self._items = items
+
+    @property
+    @override
+    def delta_actions(self) -> tuple[DeltaAction[_S_co], ...]:
+        return tuple(SimpleRemoveOneAction(item) for item in self._items)
+
+    @override
+    def map(self, transformer: Callable[[_S_co], _T]) -> SimpleRemoveAllAction[_T]:
+        return SimpleRemoveAllAction(tuple(transformer(item) for item in self._items))
+
+    @override
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, SimpleRemoveAllAction):
+            return NotImplemented
+        return bool(self._items == other._items)
 
 
 class ElementsChangedAction(DeltasAction[_S_co], Generic[_S_co], ABC):
@@ -194,6 +256,19 @@ class OneElementChangedAction(DeltasAction[_S_co], Generic[_S_co], ABC):
     @override
     def map(self, transformer: Callable[[_S_co], _T]) -> OneElementChangedAction[_T]:
         return SimpleOneElementChangedAction(new_item=transformer(self.new_item), old_item=transformer(self.old_item))
+
+    @override
+    def filter(self, predicate: Callable[[_S_co], bool]) -> DeltasAction[_S_co] | None:
+        old_matches = predicate(self.old_item)
+        new_matches = predicate(self.new_item)
+        if old_matches and new_matches:
+            return SimpleOneElementChangedAction(new_item=self.new_item, old_item=self.old_item)
+        elif old_matches:
+            return SimpleRemoveOneAction(self.old_item)
+        elif new_matches:
+            return SimpleAddOneAction(self.new_item)
+        else:
+            return None
 
 
 class SimpleOneElementChangedAction(OneElementChangedAction[_S_co], Generic[_S_co]):
@@ -613,6 +688,10 @@ class ReverseAction(SequenceAction[_S_co], Generic[_S_co]):
     @override
     def map(self, transformer: Callable[[_S_co], _T]) -> ReverseAction[_T]:
         return reverse_action()
+
+    @override
+    def filter(self, predicate: Callable[[_S_co], bool]) -> ReverseAction[_S_co]:
+        return self
 
 
 class ExtendAction(AtIndicesDeltasAction[_S_co], SequenceAction[_S_co], Generic[_S_co], ABC):

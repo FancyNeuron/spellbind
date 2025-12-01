@@ -241,6 +241,41 @@ class ValueSequenceObservers(Observers):
         self.on_change_observer.assert_called_once_with(action)
 
 
+class ValueCollectionObservers(Observers):
+    def __init__(self, collection: ObservableCollection):
+        self.on_change_observer = OneParameterObserver()
+        self.delta_observer = OneParameterObserver()
+        collection.on_change.observe(self.on_change_observer)
+        collection.delta_observable.observe_single(self.delta_observer)
+        super().__init__(self.on_change_observer, self.delta_observer)
+
+    def assert_added_calls(self, *expected_adds: Any):
+        self.assert_calls(*(append_bool(add, True) for add in expected_adds))
+
+    def assert_removed_calls(self, *expected_removes: Any):
+        self.assert_calls(*(append_bool(remove, False) for remove in expected_removes))
+
+    def assert_calls(self, *expected_calls: tuple[Any, bool]):
+        delta_calls = self.delta_observer.calls
+        if not len(delta_calls) == len(expected_calls):
+            pytest.fail(f"Expected {len(expected_calls)} calls, got {len(delta_calls)}")
+        for i, (call, expected_call) in enumerate(zip(delta_calls, expected_calls)):
+            action = call.get_arg()
+            assert isinstance(action, DeltaAction)
+            expected_value, expected_added = expected_call
+            if not action.is_add == expected_added:
+                pytest.fail(f"Error call {i}. Expected {'add' if expected_added else 'remove'}, got {'add' if action.is_add else 'remove'}")
+            if not action.value == expected_value:
+                pytest.fail(f"Error call {i}. Expected value {expected_value}, got {action.value}")
+
+    def assert_actions(self, *actions: CollectionAction):
+        assert self.on_change_observer.calls == [*actions]
+
+    def assert_single_action(self, action: CollectionAction):
+        assert len(self.on_change_observer.calls) == 1
+        assert self.on_change_observer.calls[0] == action
+
+
 @contextmanager
 def assert_length_changed_during_action_events_but_notifies_after(collection: ObservableCollection, expected_length: int):
     events = []

@@ -860,7 +860,7 @@ class MappedIndexObservableSequence(IndexObservableSequenceBase[_S], Generic[_S]
                 else:
                     for delta in other_action.delta_actions:
                         if delta.is_add:
-                            value = self._map_func(delta.value)
+                            value: _S = self._map_func(delta.value)
                             self._values.insert(delta.index, value)
                         else:
                             del self._values[delta.index]
