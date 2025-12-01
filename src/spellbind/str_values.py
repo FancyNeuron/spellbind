@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from abc import ABC
-from typing import Any, Generic, TypeVar, Callable, Iterable, TYPE_CHECKING
+from typing import Any, Generic, TypeVar, Callable, Iterable, TYPE_CHECKING, Mapping
 
 from typing_extensions import override
 
@@ -49,6 +49,42 @@ class StrValue(Value[str], ABC):
     @override
     def to_str(self) -> StrValue:
         return self
+
+    def format(self, **kwargs) -> StrValue:
+        """Format this StrValue using the provided keyword arguments.
+
+        Updates to self or any of the keyword arguments will cause the resulting StrValue to update accordingly.
+
+        Args:
+            **kwargs: Keyword arguments to be used for formatting the string, may be StrValue or str.
+
+        Raises:
+            KeyError: If a required keyword argument is missing during initialisation.
+            If the key "gets lost" during updates to self, the unformatted string will be returned instead.
+        """
+
+        is_initialisation = True
+
+        def formatter(args: Iterable[str]) -> str:
+            args_tuple = tuple(args)
+            to_format = args_tuple[0]
+            current_kwargs = to_format_kwargs(*args_tuple[1:])
+            try:
+                return to_format.format(**current_kwargs)
+            except KeyError:
+                if is_initialisation:
+                    raise
+                else:
+                    return to_format
+
+        copied_kwargs: dict[str, StrLike] = {key: value for key, value in kwargs.items()}
+
+        def to_format_kwargs(*args: str) -> Mapping[str, str]:
+            return {k: v for k, v in zip(copied_kwargs.keys(), args)}
+
+        result = StrValue.derive_from_many(formatter, self, *copied_kwargs.values())
+        is_initialisation = False
+        return result
 
     @classmethod
     def derive_from_three(cls, transformer: Callable[[_S, _T, _U], str],
