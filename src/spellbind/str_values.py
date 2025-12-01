@@ -50,7 +50,7 @@ class StrValue(Value[str], ABC):
     def to_str(self) -> StrValue:
         return self
 
-    def format(self, **kwargs) -> StrValue:
+    def format(self, **kwargs: StrLike) -> StrValue:
         """Format this StrValue using the provided keyword arguments.
 
         Updates to self or any of the keyword arguments will cause the resulting StrValue to update accordingly.
@@ -105,6 +105,13 @@ class StrValue(Value[str], ABC):
             create_constant=StrConstant.of,
             is_associative=is_associative,
         )
+
+    @classmethod
+    def str_of(cls, value: Any) -> StrValue:
+        if isinstance(value, Value):
+            return value.to_str()
+        else:
+            return StrConstant.of(str(value))
 
 
 def concatenate(*values: StrLike) -> StrValue:
