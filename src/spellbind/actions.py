@@ -179,6 +179,26 @@ class SimpleRemoveOneAction(RemoveOneAction[_S_co], Generic[_S_co]):
         return bool(self.value == other.value)
 
 
+class SimpleRemoveAllAction(DeltasAction[_S_co], Generic[_S_co]):
+    def __init__(self, items: tuple[_S_co, ...]):
+        self._items = items
+
+    @property
+    @override
+    def delta_actions(self) -> tuple[DeltaAction[_S_co], ...]:
+        return tuple(SimpleRemoveOneAction(item) for item in self._items)
+
+    @override
+    def map(self, transformer: Callable[[_S_co], _T]) -> SimpleRemoveAllAction[_T]:
+        return SimpleRemoveAllAction(tuple(transformer(item) for item in self._items))
+
+    @override
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, SimpleRemoveAllAction):
+            return NotImplemented
+        return bool(self._items == other._items)
+
+
 class ElementsChangedAction(DeltasAction[_S_co], Generic[_S_co], ABC):
     @property
     @abstractmethod

@@ -6,7 +6,8 @@ from typing import TypeVar, Generic, Collection, Callable, Iterable, Iterator, A
 
 from typing_extensions import override
 
-from spellbind.actions import CollectionAction, DeltaAction, DeltasAction, ClearAction, ReverseAction, clear_action
+from spellbind.actions import CollectionAction, DeltaAction, DeltasAction, ClearAction, ReverseAction, clear_action, \
+    SimpleRemoveAllAction
 from spellbind.bool_values import BoolValue
 from spellbind.deriveds import Derived
 from spellbind.event import BiEvent, ValueEvent
