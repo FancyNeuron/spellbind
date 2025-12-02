@@ -1,7 +1,10 @@
 # spellbind
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
-[![Tests](https://github.com/FancyNeuron/spellbind/actions/workflows/python-package.yml/badge.svg)](https://github.com/FancyNeuron/spellbind/actions/workflows/python-package.yml)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![flake8](https://img.shields.io/github/actions/workflow/status/FancyNeuron/spellbind/python-package.yml?label=flake8&job=flake8)](https://github.com/FancyNeuron/spellbind/actions/workflows/python-package.yml)
+[![mypy](https://img.shields.io/github/actions/workflow/status/FancyNeuron/spellbind/python-package.yml?label=mypy&job=mypy)](https://github.com/FancyNeuron/spellbind/actions/workflows/python-package.yml)
+[![pytest](https://img.shields.io/github/actions/workflow/status/FancyNeuron/spellbind/python-package.yml?label=pytest&job=pytest)](https://github.com/FancyNeuron/spellbind/actions/workflows/python-package.yml)
 
 > Reactive programming for Python with reactive variables and events.
 
@@ -75,7 +78,7 @@ result = base * multiplier
 
 # Bind variables to computed values
 my_variable = IntVariable(0)
-my_variable.bind_to(result)
+my_variable.bind(result)
 
 print(my_variable)  # 30
 
@@ -100,10 +103,10 @@ source = StrVariable("hello")
 target = StrVariable("")
 
 # Strong binding (default) - keeps source alive
-target.bind_to(source, bind_weakly=False)
+target.bind(source, bind_weakly=False)
 
 # Weak binding - allows source to be garbage collected
-target.bind_to(source, bind_weakly=True)
+target.bind(source, bind_weakly=True)
 ```
 
 ### Circular Dependency Detection
@@ -116,7 +119,7 @@ from spellbind.int_values import IntVariable
 a = IntVariable(1)
 b = IntVariable(2)
 
-a.bind_to(b)
+a.bind(b)
 # b.bind_to(a)  # This would raise RecursionError
 ```
 
@@ -241,8 +244,8 @@ sidebar_window = Window(0, 0, 200, 400)
 
 # Automatically position sidebar to the right of main window
 margin = IntVariable(10)
-sidebar_window.x.bind_to(main_window.x + main_window.width + margin)
-sidebar_window.y.bind_to(main_window.y)
+sidebar_window.x.bind(main_window.x + main_window.width + margin)
+sidebar_window.y.bind(main_window.y)
 
 print(main_window)  # Window(x=100, y=50, width=800, height=600)
 print(sidebar_window)  # Window(x=910, y=50, width=200, height=400)

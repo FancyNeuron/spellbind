@@ -36,13 +36,10 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-testing = [
-    "pytest",
-    "pytest-cov",
-    "flake8",
-    "mypy",
-    "setuptools_scm",
-]
+lint = ["flake8>=7.2.0"]
+test = ["pytest>=8.4.0", "pytest-cov"]
+typecheck =  ["mypy>=1.17.2"]
+validating = ["spellbind[lint,typecheck,test]"]
 
 [project.urls]
 Homepage = "https://github.com/FancyNeuron/spellbind"
