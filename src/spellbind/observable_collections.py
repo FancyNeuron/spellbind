@@ -218,24 +218,73 @@ class CombinedValue(Value[_S], Generic[_S]):
         return self._on_change.is_observed(by=by)
 
 
-class FilteredObservableBag(ObservableCollection[_S], Generic[_S]):
-    def __init__(self, source: ObservableCollection[_S], predicate: Callable[[_S], bool]) -> None:
-        self._source = source
-        self._predicate = predicate
+class _ObservableBagBase(ObservableCollection[_S], Generic[_S], ABC):
+    def __init__(self, values: Collection[_S]) -> None:
         self._item_counts: dict[_S, int] = {}
+        for item in values:
+            self._item_counts[item] = self._item_counts.get(item, 0) + 1
+        self._len_value = IntVariable(len(values))
 
-        total_count = 0
-        for item in source:
-            if predicate(item):
-                self._item_counts[item] = self._item_counts.get(item, 0) + 1
-                total_count += 1
-
-        self._on_change = ValueEvent[CollectionAction[_S]]()
-        self._delta_event = ValueEvent[DeltasAction[_S]]()
-        self._delta_observable = self._delta_event.map_to_values_observable(
+        self._action_event = ValueEvent[CollectionAction[_S]]()
+        self._deltas_event = ValueEvent[DeltasAction[_S]]()
+        self._delta_observable = self._deltas_event.map_to_values_observable(
             transformer=lambda deltas_action: deltas_action.delta_actions
         )
-        self._len_value = IntVariable(total_count)
+
+    def _is_observed(self) -> bool:
+        return self._action_event.is_observed() or self._deltas_event.is_observed()
+
+    @property
+    @override
+    def on_change(self) -> ValueObservable[CollectionAction[_S]]:
+        return self._action_event
+
+    @property
+    @override
+    def delta_observable(self) -> ValuesObservable[DeltaAction[_S]]:
+        return self._delta_observable
+
+    @property
+    @override
+    def length_value(self) -> IntValue:
+        return self._len_value
+
+    @override
+    def __len__(self) -> int:
+        return self._len_value.value
+
+    @override
+    def __contains__(self, item: object) -> bool:
+        return item in self._item_counts
+
+    @override
+    def __iter__(self) -> Iterator[_S]:
+        for item, count in self._item_counts.items():
+            for _ in range(count):
+                yield item
+
+    def _clear(self) -> None:
+        if self._len_value.value == 0:
+            return
+
+        if self._deltas_event.is_observed():
+            removed_elements = tuple(self)
+        else:
+            removed_elements = None
+        self._item_counts.clear()
+
+        with self._len_value.set_delay_notify(0):
+            if removed_elements is not None:
+                self._deltas_event(SimpleRemoveAllAction(removed_elements))
+            if self._action_event.is_observed():
+                self._action_event(clear_action())
+
+
+class FilteredObservableBag(_ObservableBagBase[_S], Generic[_S]):
+    def __init__(self, source: ObservableCollection[_S], predicate: Callable[[_S], bool]) -> None:
+        super().__init__(tuple(item for item in source if predicate(item)))
+        self._source = source
+        self._predicate = predicate
 
         source.on_change.observe(self._on_source_action)
 
@@ -263,53 +312,10 @@ class FilteredObservableBag(ObservableCollection[_S], Generic[_S]):
 
                 if self._is_observed():
                     with self._len_value.set_delay_notify(total_count):
-                        self._on_change(filtered_action)
-                        self._delta_event(filtered_action)
+                        self._action_event(filtered_action)
+                        self._deltas_event(filtered_action)
                 else:
                     self._len_value.value = total_count
-
-    def _clear(self) -> None:
-        if self._len_value.value == 0:
-            return
-        self._item_counts.clear()
-        if self._is_observed():
-            with self._len_value.set_delay_notify(0):
-                action: ClearAction[_S] = clear_action()
-                self._on_change(action)
-        else:
-            self._len_value.value = 0
-
-    def _is_observed(self) -> bool:
-        return self._on_change.is_observed() or self._delta_event.is_observed()
-
-    @property
-    @override
-    def on_change(self) -> ValueObservable[CollectionAction[_S]]:
-        return self._on_change
-
-    @property
-    @override
-    def delta_observable(self) -> ValuesObservable[DeltaAction[_S]]:
-        return self._delta_observable
-
-    @property
-    @override
-    def length_value(self) -> IntValue:
-        return self._len_value
-
-    @override
-    def __len__(self) -> int:
-        return self._len_value.value
-
-    @override
-    def __contains__(self, item: object) -> bool:
-        return item in self._item_counts
-
-    @override
-    def __iter__(self) -> Iterator[_S]:
-        for item, count in self._item_counts.items():
-            for _ in range(count):
-                yield item
 
     @override
     def __repr__(self) -> str:

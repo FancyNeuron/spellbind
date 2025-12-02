@@ -137,6 +137,7 @@ def test_clear_source():
 
     assert len(filtered) == 0
     assert list(filtered) == []
+    observers.assert_removed_calls(2, 4)
     observers.assert_single_action(clear_action())
 
 
@@ -202,7 +203,7 @@ def test_multiple_operations():
     source.clear()
     assert list(filtered) == []
 
-    observers.assert_calls((6, True), (2, False))
+    observers.assert_calls((6, True), (2, False), (4, False), (6, False))
     observers.assert_actions(
         SimpleAddOneAction(6),
         SimpleRemoveOneAction(2),
