@@ -35,6 +35,7 @@ class ObservableSequence(Sequence[_S_co], ObservableCollection[_S_co], Generic[_
     def on_change(self) -> ValueObservable[AtIndicesDeltasAction[_S_co] | ClearAction[_S_co] | ReverseAction[_S_co] | ElementsChangedAction[_S_co]]: ...
 
     @abstractmethod
+    @override
     def map(self, transformer: Callable[[_S_co], _T]) -> ObservableSequence[_T]: ...
 
     @override
@@ -848,25 +849,25 @@ class TypedValueList(ValueList[_S], Generic[_S]):
 
 
 class MappedIndexObservableSequence(IndexObservableSequenceBase[_S], Generic[_S]):
-    def __init__(self, mapped_from: IndexObservableSequence[_T], map_func: Callable[[_T], _S]) -> None:
-        super().__init__(map_func(item) for item in mapped_from)
-        self._mapped_from = mapped_from
-        self._map_func = map_func
+    def __init__(self, source: IndexObservableSequence[_T], transform: Callable[[_T], _S]) -> None:
+        super().__init__(transform(item) for item in source)
+        self._source = source
+        self._transform = transform
 
         def on_action(other_action: AtIndicesDeltasAction[_T] | ClearAction[_T] | ReverseAction[_T]) -> None:
             if isinstance(other_action, AtIndicesDeltasAction):
                 if isinstance(other_action, ExtendAction):
-                    self._extend((self._map_func(item) for item in other_action.items))
+                    self._extend((self._transform(item) for item in other_action.items))
                 else:
                     for delta in other_action.delta_actions:
                         if delta.is_add:
-                            value: _S = self._map_func(delta.value)
+                            value: _S = self._transform(delta.value)
                             self._values.insert(delta.index, value)
                         else:
                             del self._values[delta.index]
                     if self._is_observed():
                         with self._len_value.set_delay_notify(len(self._values)):
-                            action = other_action.map(self._map_func)
+                            action = other_action.map(self._transform)
                             self._action_event(action)
                             self._deltas_event(action)
                     else:
@@ -876,7 +877,7 @@ class MappedIndexObservableSequence(IndexObservableSequenceBase[_S], Generic[_S]
             elif isinstance(other_action, ReverseAction):
                 self._reverse()
 
-        mapped_from.on_change.observe(on_action)
+        source.on_change.observe(on_action)
 
     def _is_observed(self) -> bool:
         return self._action_event.is_observed() or self._deltas_event.is_observed()

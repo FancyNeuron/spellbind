@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import functools
+import logging
 from abc import ABC, abstractmethod
-from typing import TypeVar, Generic, Collection, Callable, Iterable, Iterator, Any
+from typing import TypeVar, Generic, Collection, Callable, Iterable, Iterator, Any, TYPE_CHECKING
 
 from typing_extensions import override
 
@@ -11,15 +12,23 @@ from spellbind.actions import CollectionAction, DeltaAction, DeltasAction, Clear
 from spellbind.bool_values import BoolValue
 from spellbind.deriveds import Derived
 from spellbind.event import BiEvent, ValueEvent
+from spellbind.float_values import FloatValue
 from spellbind.int_values import IntValue, IntVariable
 from spellbind.observables import ValuesObservable, ValueObservable, Observer, ValueObserver, BiObserver, \
     Subscription
 from spellbind.str_values import StrValue
 from spellbind.values import Value, EMPTY_FROZEN_SET
 
+if TYPE_CHECKING:
+    from spellbind.float_collections import ObservableFloatCollection
+    from spellbind.int_collections import ObservableIntCollection
+
+
 _S = TypeVar("_S")
 _S_co = TypeVar("_S_co", covariant=True)
 _T = TypeVar("_T")
+
+_logger = logging.getLogger(__name__)
 
 
 class ObservableCollection(Collection[_S_co], Generic[_S_co], ABC):
@@ -56,6 +65,11 @@ class ObservableCollection(Collection[_S_co], Generic[_S_co], ABC):
 
         return CombinedIntValue(self, combiner=combiner)
 
+    def combine_to_float(self, combiner: Callable[[Iterable[_S_co]], float]) -> 'FloatValue':
+        from spellbind.float_collections import CombinedFloatValue
+
+        return CombinedFloatValue(self, combiner=combiner)
+
     def reduce(self,
                add_reducer: Callable[[_T, _S_co], _T],
                remove_reducer: Callable[[_T, _S_co], _T],
@@ -79,7 +93,7 @@ class ObservableCollection(Collection[_S_co], Generic[_S_co], ABC):
     def reduce_to_int(self,
                       add_reducer: Callable[[int, _S_co], int],
                       remove_reducer: Callable[[int, _S_co], int],
-                      initial: int) -> IntValue:
+                      initial: int = 0) -> IntValue:
         from spellbind.int_collections import ReducedIntValue
 
         return ReducedIntValue(self,
@@ -87,8 +101,32 @@ class ObservableCollection(Collection[_S_co], Generic[_S_co], ABC):
                                remove_reducer=remove_reducer,
                                initial=initial)
 
-    def filter_to_bag(self, predicate: Callable[[_S_co], bool]) -> FilteredObservableBag[_S_co]:
+    def reduce_to_float(self,
+                        add_reducer: Callable[[float, _S_co], float],
+                        remove_reducer: Callable[[float, _S_co], float],
+                        initial: float = 0.) -> FloatValue:
+        from spellbind.float_collections import ReducedFloatValue
+
+        return ReducedFloatValue(self,
+                                 add_reducer=add_reducer,
+                                 remove_reducer=remove_reducer,
+                                 initial=initial)
+
+    def filter_to_bag(self, predicate: Callable[[_S_co], bool]) -> ObservableCollection[_S_co]:
         return FilteredObservableBag(self, predicate)
+
+    def map(self, transform: Callable[[_S_co], _T]) -> ObservableCollection[_T]:
+        return MappedObservableBag(self, transform)
+
+    def map_to_float(self, transform: Callable[[_S_co], float]) -> ObservableFloatCollection:
+        from spellbind.float_collections import MappedToFloatBag
+
+        return MappedToFloatBag(self, transform)
+
+    def map_to_int(self, transform: Callable[[_S_co], int]) -> ObservableIntCollection:
+        from spellbind.int_collections import MappedToIntBag
+
+        return MappedToIntBag(self, transform)
 
 
 class ReducedValue(Value[_S], Generic[_S]):
@@ -156,18 +194,6 @@ class ReducedValue(Value[_S], Generic[_S]):
 
 
 class ValueCollection(ObservableCollection[Value[_S]], Generic[_S], ABC):
-    @override
-    def reduce_to_int(self,
-                      add_reducer: Callable[[int, Value[_S]], int],
-                      remove_reducer: Callable[[int, Value[_S]], int],
-                      initial: int) -> IntValue:
-        from spellbind.int_collections import ReducedIntValue
-
-        return ReducedIntValue(self,
-                               add_reducer=add_reducer,
-                               remove_reducer=remove_reducer,
-                               initial=initial)
-
     def value_iterable(self) -> Iterable[_S]:
         return (value.value for value in self)
 
@@ -281,6 +307,52 @@ class _ObservableBagBase(ObservableCollection[_S], Generic[_S], ABC):
                 self._action_event(clear_action())
 
 
+class MappedObservableBag(_ObservableBagBase[_S], Generic[_S]):
+    def __init__(self, source: ObservableCollection[_T], transform: Callable[[_T], _S]) -> None:
+        super().__init__(tuple(transform(item) for item in source))
+        self._source = source
+        self._transform = transform
+
+        self._source.on_change.observe(self._on_source_action)
+
+    def _on_source_action(self, action: CollectionAction[Any]) -> None:
+        if isinstance(action, ClearAction):
+            self._clear()
+        elif isinstance(action, ReverseAction):
+            pass
+        elif isinstance(action, DeltasAction):
+            mapped_action = action.map(self._transform)
+            total_count = self._len_value.value
+            for delta in mapped_action.delta_actions:
+                if delta.is_add:
+                    self._item_counts[delta.value] = self._item_counts.get(delta.value, 0) + 1
+                    total_count += 1
+                else:
+                    count = self._item_counts.get(delta.value, 0)
+                    if count > 0:
+                        if count == 1:
+                            del self._item_counts[delta.value]
+                        else:
+                            self._item_counts[delta.value] = count - 1
+                        total_count -= 1
+                    else:
+                        _logger.warning(
+                            f"Attempted to remove {delta.value!r} from {self.__class__.__name__}, "
+                            f"but item not present. Source collection may be inconsistent with the mapped collection."
+                        )
+
+            if self._is_observed():
+                with self._len_value.set_delay_notify(total_count):
+                    self._action_event(mapped_action)
+                    self._deltas_event(mapped_action)
+            else:
+                self._len_value.value = total_count
+
+    @override
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}({list(self)!r})"
+
+
 class FilteredObservableBag(_ObservableBagBase[_S], Generic[_S]):
     def __init__(self, source: ObservableCollection[_S], predicate: Callable[[_S], bool]) -> None:
         super().__init__(tuple(item for item in source if predicate(item)))
@@ -310,6 +382,11 @@ class FilteredObservableBag(_ObservableBagBase[_S], Generic[_S]):
                             else:
                                 self._item_counts[delta.value] = count - 1
                             total_count -= 1
+                        else:
+                            _logger.warning(
+                                f"Attempted to remove {delta.value!r} from {self.__class__.__name__}, "
+                                f"but item not present. Source collection may be inconsistent with the filtered collection."
+                            )
 
                 if self._is_observed():
                     with self._len_value.set_delay_notify(total_count):

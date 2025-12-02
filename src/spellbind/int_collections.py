@@ -7,8 +7,10 @@ from typing import Iterable, Callable, Any, TypeVar
 
 from typing_extensions import TypeIs, override
 
+from spellbind.float_values import FloatValue
 from spellbind.int_values import IntValue, IntConstant
-from spellbind.observable_collections import ObservableCollection, ReducedValue, CombinedValue, ValueCollection
+from spellbind.observable_collections import ObservableCollection, ReducedValue, CombinedValue, ValueCollection, \
+    MappedObservableBag
 from spellbind.observable_sequences import ObservableList, TypedValueList, ValueSequence, UnboxedValueSequence, \
     ObservableSequence
 from spellbind.values import Value
@@ -25,6 +27,10 @@ class ObservableIntCollection(ObservableCollection[int], ABC):
     @property
     def multiplied(self) -> IntValue:
         return self.reduce_to_int(add_reducer=operator.mul, remove_reducer=operator.floordiv, initial=1)
+
+
+class MappedToIntBag(MappedObservableBag[int], ObservableIntCollection):
+    pass
 
 
 class ObservableIntSequence(ObservableSequence[int], ObservableIntCollection, ABC):
@@ -47,6 +53,11 @@ class IntValueCollection(ValueCollection[int], ABC):
 
 class CombinedIntValue(CombinedValue[int], IntValue):
     def __init__(self, collection: ObservableCollection[_S], combiner: Callable[[Iterable[_S]], int]) -> None:
+        super().__init__(collection=collection, combiner=combiner)
+
+
+class CombinedFloatValue(CombinedValue[float], FloatValue):
+    def __init__(self, collection: ObservableCollection[_S], combiner: Callable[[Iterable[_S]], float]) -> None:
         super().__init__(collection=collection, combiner=combiner)
 
 
